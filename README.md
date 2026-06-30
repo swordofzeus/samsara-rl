@@ -103,7 +103,48 @@ policy = ValueIteration(mdp, bellman_tolerance=0.001).find_optimal_policy()
 
 ## Model-Free Prediction
 
-TODO
+Model-free methods learn value functions directly from experience (sampled episodes) without access to the MDP's transition or reward dynamics.
+
+### Monte Carlo
+
+Monte Carlo prediction estimates Q(s, a) by averaging sampled returns. After each episode, the return G_t (discounted cumulative reward from time step t onward) is computed for every visited state-action pair, and the Q-table is updated using constant-alpha learning:
+
+Q(s, a) ← Q(s, a) + α (G_t − Q(s, a))
+
+This is an every-visit implementation — if the same (s, a) pair appears multiple times in an episode, each occurrence triggers an update. Both every-visit and first-visit MC converge to the true Q^π.
+
+Returns are computed in a fully vectorized pass using a cumulative-sum trick that avoids the standard reverse loop over time steps.
+
+**`MonteCarloPrediction(mdp, policy, alpha, gamma)`**
+
+| Argument | Type    | Default | Description                              |
+|----------|---------|---------|------------------------------------------|
+| `mdp`    | MDP     |         | MDP instance to sample episodes from     |
+| `policy` | `array` |         | Stochastic policy of shape `(S, A)`      |
+| `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
+| `gamma`  | `float` | `0.9`   | Discount factor                          |
+
+**`evaluate(max_iter)`**
+
+| Argument   | Type  | Default | Description                          |
+|------------|-------|---------|--------------------------------------|
+| `max_iter` | `int` | `40000` | Number of episodes to sample from    |
+
+**Example**
+
+```python
+from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
+from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
+
+mdp = GridWorldMDP()
+policy = mdp.random_policy()
+
+mc = MonteCarloPrediction(mdp, policy, alpha=0.01, gamma=0.9)
+mc.evaluate(max_iter=10000)
+
+# V(s) for the random policy (expected value over actions)
+v = mc.q_table.mean(axis=1).reshape(4, 4)
+```
 
 ---
 
