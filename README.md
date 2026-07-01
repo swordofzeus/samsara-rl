@@ -186,7 +186,71 @@ v_td = td.q_table.mean(axis=1).reshape(4, 4)
 
 ## Model-Free Control
 
-TODO
+Control algorithms learn an optimal policy by interleaving evaluation and improvement on every step. Both SARSA and Q-Learning build on the TD(λ) engine, using ε-greedy exploration to balance exploitation with discovery of new state-action pairs.
+
+### SARSA
+
+On-policy TD control. Bootstraps from a sampled next action A' drawn from the current policy — the name comes from the quintuple (S, A, R, S', A'). Because the bootstrap target reflects the exploratory policy, SARSA's Q values account for the cost of occasional random actions.
+
+δ = R + γ Q(S', A') − Q(S, A)
+
+**`Sarsa(mdp, policy, alpha, gamma)`**
+
+| Argument | Type    | Default | Description                              |
+|----------|---------|---------|------------------------------------------|
+| `mdp`    | MDP     |         | MDP instance to sample episodes from     |
+| `policy` | `array` |         | Initial stochastic policy of shape `(S, A)` |
+| `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
+| `gamma`  | `float` | `0.9`   | Discount factor                          |
+
+**`evaluate(max_iter)`**
+
+| Argument   | Type  | Default | Description                          |
+|------------|-------|---------|--------------------------------------|
+| `max_iter` | `int` | `5000`  | Number of episodes to run            |
+
+### Q-Learning
+
+Off-policy TD control. Bootstraps from the greedy action max_a Q(S', a) regardless of the action actually taken. This means Q-Learning converges to the optimal Q* even while following an exploratory ε-greedy policy.
+
+δ = R + γ max_a Q(S', a) − Q(S, A)
+
+**`QLearning(mdp, policy, alpha, gamma)`**
+
+| Argument | Type    | Default | Description                              |
+|----------|---------|---------|------------------------------------------|
+| `mdp`    | MDP     |         | MDP instance to sample episodes from     |
+| `policy` | `array` |         | Initial stochastic policy of shape `(S, A)` |
+| `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
+| `gamma`  | `float` | `0.9`   | Discount factor                          |
+
+**`evaluate(max_iter)`**
+
+| Argument   | Type  | Default | Description                          |
+|------------|-------|---------|--------------------------------------|
+| `max_iter` | `int` | `5000`  | Number of episodes to run            |
+
+**Examples**
+
+```python
+from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
+from samsara_rl.control.tabular.sarsa import Sarsa
+from samsara_rl.control.tabular.q_learning import QLearning
+from samsara_rl.utils.policy.policy_utils import init_uniform_random
+
+mdp = GridWorldMDP()
+policy = init_uniform_random(mdp)
+
+sarsa = Sarsa(mdp, policy, alpha=0.01, gamma=0.9)
+sarsa.evaluate(max_iter=5000)
+
+ql = QLearning(mdp, policy, alpha=0.01, gamma=0.9)
+ql.evaluate(max_iter=5000)
+
+# Optimal value per state (best action)
+v_sarsa = sarsa.agent.q_table.max(axis=1).reshape(4, 4)
+v_ql = ql.agent.q_table.max(axis=1).reshape(4, 4)
+```
 
 ---
 
