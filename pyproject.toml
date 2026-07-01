@@ -1,6 +1,6 @@
 [project]
 name = "samsara-rl"
-version = "0.0.2"
+version = "0.0.4"
 description = "Vectorized Reinforcement Learning Library"
 authors = [{ name = "Ashish Juneja", email = "ashishjuneja99@gmail.com" }]
 readme = "README.md"
