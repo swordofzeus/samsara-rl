@@ -1,5 +1,5 @@
 from enum import Enum
-from pprint import pprint
+
 import numpy as np
 
 
@@ -21,8 +21,8 @@ class GridWorldMDP:
     ACTION_COUNT = 4
     STATE_COUNT = 16
 
-    def __init__(self):
-        self.terminal_states = [(0, 0), (3, 3), 0, 15]
+    def __init__(self) -> None:
+        self.terminal_states: list[tuple[int, int] | int] = [(0, 0), (3, 3), 0, 15]
         self.state_action_transition_matrix = np.zeros((16, 4, 16))
         self.reward_matrix = np.full((16, 4, 16), -1)
 
@@ -35,17 +35,17 @@ class GridWorldMDP:
         self.init_transition_probabilities()
         self.init_reward_matrix()
 
-    def step(self, state, action):
+    def step(self, state: int, action: int) -> tuple[int, int]:
         curr_state_transitions = self.state_action_transition_matrix[state][action]
-        next_state = np.random.choice(len(curr_state_transitions),p=curr_state_transitions)
+        next_state = np.random.choice(len(curr_state_transitions), p=curr_state_transitions)
         reward = self.reward_matrix[state][action][next_state]
         return reward, next_state
 
-    def init_reward_matrix(self):
+    def init_reward_matrix(self) -> None:
         self.reward_matrix[0, :, 0] = 0
         self.reward_matrix[15, :, 15] = 0
 
-    def init_transition_probabilities(self):
+    def init_transition_probabilities(self) -> None:
         """
         Initialize a 16x4x16 numpy matrix that captures the GridWorld
         Deterministic Dynamics. 16 possible starting states, 4 actions from each of those states
@@ -53,42 +53,36 @@ class GridWorldMDP:
         actions. All actions are deterministic, ex: UP has 100% probability of upward movement and 0% into any
         of the other 15 states. At boarder collisions agent ends up in current state before action
         """
-        for curr_state_next_action in np.ndindex(
-            self.state_action_transition_matrix.shape[:-1]
-        ):
+        for curr_state_next_action in np.ndindex(self.state_action_transition_matrix.shape[:-1]):
             curr_state, action = curr_state_next_action
             curr_row, curr_col = self._unflatten(curr_state)
             next_state = self.actions[action]((curr_row, curr_col))[0]
             flattened_next_state = self._flatten(next_state[0], next_state[1])
-            self.state_action_transition_matrix[
-                curr_state, action, flattened_next_state
-            ] = 1
+            self.state_action_transition_matrix[curr_state, action, flattened_next_state] = 1
 
-    def move(self, state, x_direction, y_direction):
+    def move(self, state: tuple[int, int], x_direction: int, y_direction: int) -> list[tuple[int, int]]:
         next_step = (state[0] + x_direction, state[1] + y_direction)
-        if state in self.terminal_states or not self.in_bounds(
-            next_step[0], next_step[1]
-        ):
+        if state in self.terminal_states or not self.in_bounds(next_step[0], next_step[1]):
             return [state]
         else:
             return [next_step]
 
-    def up(self, state):
+    def up(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=-1, y_direction=0)
 
-    def down(self, state):
+    def down(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=1, y_direction=0)
 
-    def left(self, state):
+    def left(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=0, y_direction=-1)
 
-    def right(self, state):
+    def right(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=0, y_direction=1)
 
-    def in_bounds(self, x, y):
+    def in_bounds(self, x: int, y: int) -> bool:
         return x in range(0, 4) and y in range(0, 4)
 
-    def _unflatten(self, state):
+    def _unflatten(self, state: int) -> tuple[int, int]:
         """
         Folds the tensor addressable 0-15 state into a 4x4 human readable coordinate
         """
@@ -96,14 +90,14 @@ class GridWorldMDP:
         col = state % 4
         return row, col
 
-    def _flatten(self, row, col):
+    def _flatten(self, row: int, col: int) -> int:
         """
         Folds the human readable row,col coordinate into a machine addressable 0..15
         """
         return 4 * row + col
 
-    def initial_state(self):
+    def initial_state(self) -> int:
         return self._flatten(2, 2)
 
-    def is_terminal_state(self, state):
+    def is_terminal_state(self, state: int) -> bool:
         return state in self.terminal_states

@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from samsara_rl.utils.policy.policy_utils import sample
+from typing import Any
+
 import numpy as np
-import math
+
+from samsara_rl.utils.policy.policy_utils import sample
 
 
 class PolicyEvaluation(ABC):
@@ -21,7 +23,7 @@ class PolicyEvaluation(ABC):
         gamma: Discount factor applied to future rewards.
     """
 
-    def __init__(self, mdp, policy, alpha: float = 0.01, gamma: float = 0.9):
+    def __init__(self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 0.9) -> None:
         self.q_table: np.ndarray = np.zeros((mdp.STATE_COUNT, mdp.ACTION_COUNT))
         self.mdp = mdp
         self.policy: np.ndarray = policy
@@ -70,15 +72,11 @@ class PolicyEvaluation(ABC):
         """
         curr_state, curr_step = self.mdp.initial_state(), 0
 
-        trajectory = np.zeros(
-            (1000, 3)
-        )
+        trajectory = np.zeros((1000, 3))
 
         while not self.mdp.is_terminal_state(curr_state):
             sampled_action = sample(self.policy, curr_state)
-            reward, next_state = self.mdp.step(
-                curr_state, sampled_action
-            )
+            reward, next_state = self.mdp.step(curr_state, sampled_action)
             trajectory[curr_step][0] = curr_state
             trajectory[curr_step][1] = sampled_action
             trajectory[curr_step][2] = reward
@@ -97,7 +95,6 @@ class PolicyEvaluation(ABC):
         Args:
             max_iter: Number of episodes to sample and learn from.
         """
-        for _ in range (0, max_iter):
+        for _ in range(0, max_iter):
             trajectory = self.run_episode()
             self.post_episode(trajectory)
-
