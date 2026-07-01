@@ -1,11 +1,10 @@
 from typing import Any
 
 import numpy as np
+from samsara_rl.agent import Agent
 
-from samsara_rl.prediction.policy_evaluation import PolicyEvaluation
 
-
-class MonteCarloPrediction(PolicyEvaluation):
+class MonteCarloPrediction(Agent):
     """Every-visit Monte Carlo prediction for estimating Q(s, a).
 
     Generates episodes under a given policy and updates action-value
