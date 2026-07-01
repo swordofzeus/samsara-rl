@@ -1,5 +1,9 @@
 # Samsara RL
 
+<p align="center">
+  <img src="img/samsara-rl.png" alt="Samsara RL" width="200">
+</p>
+
 [![CI](https://github.com/swordofzeus/samsara-rl/actions/workflows/main.yml/badge.svg)](https://github.com/swordofzeus/samsara-rl/actions/workflows/main.yml)
 
 A vectorized NumPy implementation of foundational reinforcement learning algorithms, following David Silver's RL lecture series, Sutton and Barto book and other papers cited when referenced. Built for clarity, learning as well as speed.
