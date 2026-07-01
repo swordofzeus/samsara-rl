@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from samsara_rl.search.sample_policy import SamplePolicy
 from typing import Any
 
 import numpy as np
 
+from samsara_rl.search.sample_policy import SamplePolicy
 from samsara_rl.search.search import Search
-
 
 
 class Agent(ABC):
@@ -25,7 +24,9 @@ class Agent(ABC):
         gamma: Discount factor applied to future rewards.
     """
 
-    def __init__(self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 0.9, search:Search = None) -> None:
+    def __init__(
+        self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 0.9, search: Search | None = None
+    ) -> None:
         self.q_table: np.ndarray = np.zeros((mdp.STATE_COUNT, mdp.ACTION_COUNT))
         self.mdp = mdp
         self.policy: np.ndarray = policy
@@ -89,7 +90,7 @@ class Agent(ABC):
 
         trajectory[curr_step][0] = curr_state
 
-        self.post_visit(trajectory[0:curr_step+1])
+        self.post_visit(trajectory[0 : curr_step + 1])
         return trajectory[0:curr_step]
 
     def evaluate(self, max_iter: int = 1000) -> None:

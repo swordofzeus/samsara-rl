@@ -1,14 +1,15 @@
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+
 from samsara_rl.agent import Agent
+from samsara_rl.search.search import Search
 
 
-
-def td_expectation(policy, state, q_table ):
-    return q_table[state].dot(
-        policy[state]
-    )
+def td_expectation(policy: np.ndarray, state: int, q_table: np.ndarray) -> float:
+    result: float = q_table[state].dot(policy[state])
+    return result
 
 
 class TemporalDifference(Agent):
@@ -19,17 +20,16 @@ class TemporalDifference(Agent):
         alpha: float = 0.01,
         gamma: float = 0.9,
         _lambda: float = 0.4,
-        search=None,
-        td_target=None
+        search: Search | None = None,
+        td_target: Callable[[np.ndarray, int, np.ndarray], float] | None = None,
     ) -> None:
         super().__init__(mdp, policy, alpha, gamma)
         self.elibility = np.zeros((mdp.STATE_COUNT, self.mdp.ACTION_COUNT))
         self._lambda = _lambda
-        self.td_target = td_expectation if not td_target else td_target
+        self.td_target = td_target if td_target else td_expectation
 
     def post_episode(self, trajectory: np.ndarray) -> None:
         self.elibility = np.zeros((self.mdp.STATE_COUNT, self.mdp.ACTION_COUNT))
-
 
     def post_visit(self, trajectory: np.ndarray) -> None:
 
