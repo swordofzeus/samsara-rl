@@ -1,6 +1,7 @@
 from typing import Any
 
 import numpy as np
+
 from samsara_rl.agent import Agent
 
 

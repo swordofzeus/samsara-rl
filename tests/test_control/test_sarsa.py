@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from samsara_rl.control.tabular.sarsa import Sarsa
 
+from samsara_rl.control.tabular.sarsa import Sarsa
 from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
 from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
@@ -46,6 +46,4 @@ def test_sarsa_convergence(gw_mdp, random_policy, expected_sarsa_q):
 
     assert np.all(q[0] == 0.0), "Terminal state 0 should have Q=0"
     assert np.all(q[15] == 0.0), "Terminal state 15 should have Q=0"
-    assert np.allclose(q, expected_sarsa_q, atol=1.0), (
-        f"Q values should be close to expected.\nGot:\n{q}"
-    )
+    assert np.allclose(q, expected_sarsa_q, atol=1.0), f"Q values should be close to expected.\nGot:\n{q}"

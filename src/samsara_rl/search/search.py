@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 
-class Search(ABC):
-    '''
-        Select next action given policy, state, q table
-    '''
+import numpy as np
 
-    def __init__(self):
-        pass
+
+class Search(ABC):
+    """
+    Select next action given policy, state, q table
+    """
 
     @abstractmethod
-    def step(self, policy, state, q_table):
+    def step(self, policy: np.ndarray, state: int, q_table: np.ndarray) -> int:
         pass
