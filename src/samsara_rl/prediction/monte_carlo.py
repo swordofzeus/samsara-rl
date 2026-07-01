@@ -1,6 +1,8 @@
+from typing import Any
+
 import numpy as np
+
 from samsara_rl.prediction.policy_evaluation import PolicyEvaluation
-from samsara_rl.utils.policy.policy_utils import sample
 
 
 class MonteCarloPrediction(PolicyEvaluation):
@@ -20,13 +22,13 @@ class MonteCarloPrediction(PolicyEvaluation):
         gamma: Discount factor.
     """
 
-    def __init__(self, mdp, policy, alpha=0.01, gamma=1):
+    def __init__(self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 1) -> None:
         super().__init__(mdp, policy, alpha, gamma)
 
-    def post_visit(self, trajectory):
+    def post_visit(self, trajectory: np.ndarray) -> None:
         return
 
-    def post_episode(self, trajectory):
+    def post_episode(self, trajectory: np.ndarray) -> None:
         """Update Q-table from a single episode trajectory.
 
         Uses advanced indexing to apply the constant-alpha MC update
@@ -45,7 +47,7 @@ class MonteCarloPrediction(PolicyEvaluation):
         bellman_error = self.alpha * (discounted_trajectory - self.q_table[s, a])
         np.add.at(self.q_table, (s, a), bellman_error)
 
-    def _discounted_cum_trajectory(self, trajectory):
+    def _discounted_cum_trajectory(self, trajectory: np.ndarray) -> np.ndarray:
         """Compute discounted returns for every time step, vectorized.
 
         Avoids the standard O(T) reverse loop by factoring out discount
@@ -68,4 +70,5 @@ class MonteCarloPrediction(PolicyEvaluation):
         reversed_reward = reversed_reward / discount_ratio
         reversed_reward_cum = reversed_reward[::-1].cumsum()
         reversed_reward_cum = reversed_reward_cum * discount_ratio[::-1]
-        return reversed_reward_cum[::-1]
+        result: np.ndarray = reversed_reward_cum[::-1]
+        return result

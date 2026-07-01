@@ -2,18 +2,18 @@
 install: ## Install the virtual environment and install the pre-commit hooks
 	@echo "🚀 Creating virtual environment using uv"
 	@uv sync
-	@uv run pre-commit install
+	@uv run python -m pre_commit install
 
 .PHONY: check
 check: ## Run code quality tools.
 	@echo "🚀 Checking lock file consistency with 'pyproject.toml'"
 	@uv lock --locked
 	@echo "🚀 Linting code: Running pre-commit"
-	@uv run pre-commit run -a
+	@uv run python -m pre_commit run -a
 	@echo "🚀 Static type checking: Running mypy"
-	@uv run mypy
+	@uv run python -m mypy
 	@echo "🚀 Checking for obsolete dependencies: Running deptry"
-	@uv run deptry src
+	@uv run python -m deptry src
 
 .PHONY: test
 test: ## Test the code with pytest

@@ -1,8 +1,8 @@
-import math
-from typing import Optional
-from samsara_rl.planning.planning import Planning
+from typing import Any
 
 import numpy as np
+
+from samsara_rl.planning.planning import Planning
 
 
 class PolicyIteration(Planning):
@@ -25,7 +25,7 @@ class PolicyIteration(Planning):
         values: Current state-value estimate, shape (STATE_COUNT,).
     """
 
-    def __init__(self, mdp, bellman_tolerance: float = 0.01) -> None:
+    def __init__(self, mdp: "Any", bellman_tolerance: float = 0.01) -> None:
         super().__init__(mdp, bellman_tolerance)
         self.policy = self._init_policy()
 
@@ -36,7 +36,7 @@ class PolicyIteration(Planning):
         Returns:
             The converged (optimal) policy array of shape (STATE_COUNT, ACTION_COUNT).
         """
-        previous_policy: Optional[np.ndarray] = None
+        previous_policy: np.ndarray | None = None
         iteration = 0
 
         while not self._is_converged(previous_policy) and iteration < max_iter:
@@ -61,19 +61,13 @@ class PolicyIteration(Planning):
 
         while self._bellman_error(value_history) > self.bellman_tolerance:
             # Expected next-state value for each (s, a): shape (S, A)
-            expected_next_value = np.dot(
-                self.mdp.state_action_transition_matrix, self.values
-            )
+            expected_next_value = np.dot(self.mdp.state_action_transition_matrix, self.values)
 
             # Expected immediate reward for each (s, a): shape (S, A)
-            expected_reward = (
-                self.mdp.reward_matrix * self.mdp.state_action_transition_matrix
-            ).sum(axis=-1)
+            expected_reward = (self.mdp.reward_matrix * self.mdp.state_action_transition_matrix).sum(axis=-1)
 
             # Weight by policy probabilities and collapse over actions: shape (S,)
-            new_values = (self.policy * (expected_next_value + expected_reward)).sum(
-                axis=-1
-            )
+            new_values = (self.policy * (expected_next_value + expected_reward)).sum(axis=-1)
 
             value_history.append(new_values)
             self.values = new_values
@@ -85,8 +79,6 @@ class PolicyIteration(Planning):
             1.0 / self.mdp.ACTION_COUNT,
         )
 
-    def _is_converged(self, previous_policy: Optional[np.ndarray]) -> bool:
+    def _is_converged(self, previous_policy: np.ndarray | None) -> bool:
         """Return True if the policy is unchanged since the last improvement step."""
-        return previous_policy is not None and np.array_equal(
-            previous_policy, self.policy
-        )
+        return previous_policy is not None and np.array_equal(previous_policy, self.policy)

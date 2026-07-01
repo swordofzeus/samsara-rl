@@ -1,8 +1,9 @@
-from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
-from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
-from samsara_rl.utils.policy.policy_utils import init_uniform_random
 import numpy as np
 import pytest
+
+from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
+from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
+from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
 
 @pytest.fixture
@@ -65,9 +66,7 @@ def test_post_episode_handles_duplicate_visits(gw_mdp, random_policy):
     mc2.post_episode(trajectory_no_dupe)
     q_without_dupes = mc2.q_table[10, 1]
 
-    assert q_with_dupes != q_without_dupes, (
-        "Duplicate visits should produce different Q updates than single visits"
-    )
+    assert q_with_dupes != q_without_dupes, "Duplicate visits should produce different Q updates than single visits"
 
 
 def test_discounted_returns_no_discount(gw_mdp, random_policy):
@@ -92,6 +91,4 @@ def test_evaluate_convergence(gw_mdp, random_policy, expected_v_random_policy):
 
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
     assert v[3, 3] == 0.0, "Terminal state (3,3) should be 0"
-    assert np.allclose(v, expected_v_random_policy, atol=0.8), (
-        f"V^pi should be close to expected values.\nGot:\n{v}"
-    )
+    assert np.allclose(v, expected_v_random_policy, atol=0.8), f"V^pi should be close to expected values.\nGot:\n{v}"

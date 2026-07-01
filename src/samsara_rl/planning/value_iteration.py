@@ -1,6 +1,8 @@
-from samsara_rl.planning.planning import Planning
+from typing import Any
 
 import numpy as np
+
+from samsara_rl.planning.planning import Planning
 
 
 class ValueIteration(Planning):
@@ -13,7 +15,7 @@ class ValueIteration(Planning):
     Follows the formulation in David Silver's RL Lecture 3 (Planning by DP).
     """
 
-    def __init__(self, mdp, bellman_tolerance: float = 0.01) -> None:
+    def __init__(self, mdp: "Any", bellman_tolerance: float = 0.01) -> None:
         super().__init__(mdp, bellman_tolerance)
 
     def find_optimal_policy(self) -> np.ndarray:
@@ -41,14 +43,10 @@ class ValueIteration(Planning):
 
         while self._bellman_error(value_history) > self.bellman_tolerance:
             # Expected next-state value for each (s, a): shape (S, A)
-            expected_next_value = np.dot(
-                self.mdp.state_action_transition_matrix, self.values
-            )
+            expected_next_value = np.dot(self.mdp.state_action_transition_matrix, self.values)
 
             # Expected immediate reward for each (s, a): shape (S, A)
-            expected_reward = (
-                self.mdp.reward_matrix * self.mdp.state_action_transition_matrix
-            ).sum(axis=2)
+            expected_reward = (self.mdp.reward_matrix * self.mdp.state_action_transition_matrix).sum(axis=2)
 
             # Bellman optimality: take max over actions, shape (S,)
             new_values = np.max(expected_reward + expected_next_value, axis=1)
