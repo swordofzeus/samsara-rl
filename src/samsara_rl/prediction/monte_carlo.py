@@ -1,8 +1,9 @@
 import numpy as np
+from samsara_rl.prediction.policy_evaluation import PolicyEvaluation
 from samsara_rl.utils.policy.policy_utils import sample
 
 
-class MonteCarloPrediction:
+class MonteCarloPrediction(PolicyEvaluation):
     """Every-visit Monte Carlo prediction for estimating Q(s, a).
 
     Generates episodes under a given policy and updates action-value
@@ -19,14 +20,13 @@ class MonteCarloPrediction:
         gamma: Discount factor.
     """
 
-    def __init__(self, mdp, policy, alpha=0.01, gamma=0.9):
-        self.q_table = np.zeros((mdp.STATE_COUNT, mdp.ACTION_COUNT))
-        self.mdp = mdp
-        self.policy = policy
-        self.gamma = gamma
-        self.alpha = alpha
+    def __init__(self, mdp, policy, alpha=0.01, gamma=1):
+        super().__init__(mdp, policy, alpha, gamma)
 
-    def update_q_values(self, trajectory):
+    def post_visit(self, trajectory):
+        return
+
+    def post_episode(self, trajectory):
         """Update Q-table from a single episode trajectory.
 
         Uses advanced indexing to apply the constant-alpha MC update
@@ -43,7 +43,7 @@ class MonteCarloPrediction:
         s = s_a_pairs[:, 0]
         a = s_a_pairs[:, 1]
         bellman_error = self.alpha * (discounted_trajectory - self.q_table[s, a])
-        self.q_table[s, a] += bellman_error
+        np.add.at(self.q_table, (s, a), bellman_error)
 
     def _discounted_cum_trajectory(self, trajectory):
         """Compute discounted returns for every time step, vectorized.
@@ -69,42 +69,3 @@ class MonteCarloPrediction:
         reversed_reward_cum = reversed_reward[::-1].cumsum()
         reversed_reward_cum = reversed_reward_cum * discount_ratio[::-1]
         return reversed_reward_cum[::-1]
-
-    def run_episode(self):
-        """Generate a complete episode under the current policy.
-
-        Samples actions from the policy and steps through the MDP until
-        a terminal state is reached.
-
-        Returns:
-            Array of shape ``(T, 3)`` where each row is
-            ``[state, action, reward]``.
-        """
-        curr_state, curr_step = self.mdp.initial_state(), 0
-
-        trajectory = np.zeros(
-            (1000, 3)
-        )
-
-        while not self.mdp.is_terminal_state(curr_state):
-            sampled_action = sample(self.policy, curr_state)
-            reward, next_state = self.mdp.step(
-                curr_state, sampled_action
-            )
-            trajectory[curr_step][0] = curr_state
-            trajectory[curr_step][1] = sampled_action
-            trajectory[curr_step][2] = reward
-            curr_step += 1
-            curr_state = next_state
-
-        return trajectory[0:curr_step]
-
-    def evaluate(self, max_iter: int = 40000):
-        """Run Monte Carlo prediction for a fixed number of episodes.
-
-        Args:
-            max_iter: Number of episodes to sample and learn from.
-        """
-        for _ in range(0, max_iter):
-            trajectory = self.run_episode()
-            self.update_q_values(trajectory)

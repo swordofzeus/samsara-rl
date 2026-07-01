@@ -1,8 +1,10 @@
 # Samsara RL
 
-A vectorized NumPy implementation of foundational reinforcement learning algorithms, following David Silver's RL lecture series. Built for clarity and learning — each algorithm maps directly to the equations in the lectures.
+[![CI](https://github.com/swordofzeus/samsara-rl/actions/workflows/main.yml/badge.svg)](https://github.com/swordofzeus/samsara-rl/actions/workflows/main.yml)
 
-Applications of RL include robotic manipulation, LLM fine-tuning, financial portfolio management, and adaptive control systems.
+A vectorized NumPy implementation of foundational reinforcement learning algorithms, following David Silver's RL lecture series, Sutton and Barto book and other papers cited when referenced. Built for clarity, learning as well as speed.
+
+Applications of RL include robotic manipulation, LLM fine-tuning, financial portfolio management, and control systems.
 
 ---
 
@@ -107,13 +109,11 @@ Model-free methods learn value functions directly from experience (sampled episo
 
 ### Monte Carlo
 
-Monte Carlo prediction estimates Q(s, a) by averaging sampled returns. After each episode, the return G_t (discounted cumulative reward from time step t onward) is computed for every visited state-action pair, and the Q-table is updated using constant-alpha learning:
+Every-visit Monte Carlo prediction estimates Q(s, a) from sampled returns. After each episode, the return G_t (discounted cumulative reward from time step t onward) is computed for every visited state-action pair, and the Q-table is updated using constant-alpha learning:
 
 Q(s, a) ← Q(s, a) + α (G_t − Q(s, a))
 
-This is an every-visit implementation — if the same (s, a) pair appears multiple times in an episode, each occurrence triggers an update. Both every-visit and first-visit MC converge to the true Q^π.
-
-Returns are computed in a fully vectorized pass using a cumulative-sum trick that avoids the standard reverse loop over time steps.
+If the same (s, a) pair appears multiple times in an episode, each occurrence triggers an update. Returns are computed in a fully vectorized pass using a cumulative-sum trick that avoids the standard reverse loop over time steps.
 
 **`MonteCarloPrediction(mdp, policy, alpha, gamma)`**
 
@@ -122,28 +122,60 @@ Returns are computed in a fully vectorized pass using a cumulative-sum trick tha
 | `mdp`    | MDP     |         | MDP instance to sample episodes from     |
 | `policy` | `array` |         | Stochastic policy of shape `(S, A)`      |
 | `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
-| `gamma`  | `float` | `0.9`   | Discount factor                          |
+| `gamma`  | `float` | `1`     | Discount factor                          |
 
 **`evaluate(max_iter)`**
 
 | Argument   | Type  | Default | Description                          |
 |------------|-------|---------|--------------------------------------|
-| `max_iter` | `int` | `40000` | Number of episodes to sample from    |
+| `max_iter` | `int` | `10000` | Number of episodes to sample from    |
 
-**Example**
+### TD(λ)
+
+TD(λ) learns Q(s, a) online using one-step bootstrapping with eligibility traces. After each step, the TD error is computed against the expected Q-value of the next state under the current policy, and all previously visited state-action pairs are updated proportionally to their eligibility:
+
+δ = R + γ E_π[Q(S', ·)] − Q(S, A)
+
+Q(s, a) ← Q(s, a) + α δ e(s, a)
+
+Eligibility traces use the replacing variant — on each visit to (s, a), the trace is set to 1 rather than incremented. All traces decay by γλ at each time step. Traces are reset to zero between episodes.
+
+**`TemporalDifference(mdp, policy, alpha, gamma, _lambda)`**
+
+| Argument  | Type    | Default | Description                                    |
+|-----------|---------|---------|------------------------------------------------|
+| `mdp`     | MDP     |         | MDP instance to sample episodes from           |
+| `policy`  | `array` |         | Stochastic policy of shape `(S, A)`            |
+| `alpha`   | `float` | `0.01`  | Learning rate for incremental Q updates        |
+| `gamma`   | `float` | `0.9`   | Discount factor                                |
+| `_lambda` | `float` | `0.4`   | Trace decay parameter (0 = TD(0), 1 = TD(1))  |
+
+**`evaluate(max_iter)`**
+
+| Argument   | Type  | Default | Description                          |
+|------------|-------|---------|--------------------------------------|
+| `max_iter` | `int` | `1000`  | Number of episodes to sample from    |
+
+**Examples**
 
 ```python
 from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
 from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
+from samsara_rl.prediction.td import TemporalDifference
+from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
 mdp = GridWorldMDP()
-policy = mdp.random_policy()
+policy = init_uniform_random(mdp)
 
 mc = MonteCarloPrediction(mdp, policy, alpha=0.01, gamma=0.9)
 mc.evaluate(max_iter=10000)
 
+td = TemporalDifference(mdp, policy, alpha=0.01, gamma=0.9, _lambda=0.4)
+td.evaluate(max_iter=10000)
+
 # V(s) for the random policy (expected value over actions)
-v = mc.q_table.mean(axis=1).reshape(4, 4)
+v_mc = mc.q_table.mean(axis=1).reshape(4, 4)
+v_td = td.q_table.mean(axis=1).reshape(4, 4)
 ```
 
 ---
