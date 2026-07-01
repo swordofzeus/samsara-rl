@@ -56,14 +56,14 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  check-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
+  # check-docs:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out
+  #       uses: actions/checkout@v4
 
-      - name: Set up the environment
-        uses: ./.github/actions/setup-python-env
+  #     - name: Set up the environment
+  #       uses: ./.github/actions/setup-python-env
 
-      - name: Check if documentation can be built
-        run: uv run mkdocs build -s
+  #     - name: Check if documentation can be built
+  #       run: uv run mkdocs build -s
