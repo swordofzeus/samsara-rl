@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=2.2.6",
+    "gymnasium"
 ]
 
 [project.urls]

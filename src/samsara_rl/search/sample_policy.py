@@ -8,5 +8,5 @@ class SamplePolicy(Search):
     def __init__(self) -> None:
         pass
 
-    def step(self, policy: np.ndarray, state: int, q_table: np.ndarray) -> int:
+    def step(self, policy: np.ndarray, state, action_array, episode) -> int:
         return sample(policy, state)

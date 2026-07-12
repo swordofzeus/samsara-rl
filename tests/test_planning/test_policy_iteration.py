@@ -1,6 +1,6 @@
 import numpy as np
 
-from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
+from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
 from samsara_rl.planning.policy_iteration import PolicyIteration
 
 

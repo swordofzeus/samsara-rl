@@ -2,29 +2,12 @@ import numpy as np
 import pytest
 
 from samsara_rl.control.tabular.q_learning import QLearning
-from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
-from samsara_rl.utils.policy.policy_utils import init_uniform_random
-
-
-@pytest.fixture
-def gw_mdp():
-    return GridWorldMDP()
-
-
-@pytest.fixture
-def random_policy(gw_mdp):
-    return init_uniform_random(gw_mdp)
 
 
 @pytest.fixture
 def expected_q_learning():
     return np.array([
-        [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        ],
+        [0.0, 0.0, 0.0, 0.0],
         [-1.89960069, -2.70980586, -0.99991276, -2.70972016],
         [-2.71006554, -3.43898023, -1.90005578, -3.43899869],
         [-3.43899811, -2.70999939, -2.71007744, -3.43899811],
@@ -43,11 +26,11 @@ def expected_q_learning():
     ])
 
 
-def test_q_learning_convergence(gw_mdp, random_policy, expected_q_learning):
-    """SARSA should converge close to expected Q values for the grid world."""
-    q_learning = QLearning(gw_mdp, random_policy, gamma=0.9)
+def test_q_learning_convergence(grid_world_mdp, random_policy, expected_q_learning):
+    """Q-Learning should converge close to expected Q values for the grid world."""
+    q_learning = QLearning(grid_world_mdp, random_policy, gamma=0.9)
     q_learning.evaluate(max_iter=5000)
-    q = q_learning.agent.q_table
+    q = q_learning.agent.q
 
     assert np.all(q[0] == 0.0), "Terminal state 0 should have Q=0"
     assert np.all(q[15] == 0.0), "Terminal state 15 should have Q=0"

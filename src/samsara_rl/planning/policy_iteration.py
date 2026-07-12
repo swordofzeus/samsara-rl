@@ -75,8 +75,8 @@ class PolicyIteration(Planning):
     def _init_policy(self) -> np.ndarray:
         """Return a uniform random policy of shape (STATE_COUNT, ACTION_COUNT)."""
         return np.full(
-            (self.mdp.STATE_COUNT, self.mdp.ACTION_COUNT),
-            1.0 / self.mdp.ACTION_COUNT,
+            (self.mdp.observation_space.n, self.mdp.action_space.n),
+            1.0 / self.mdp.action_space.n,
         )
 
     def _is_converged(self, previous_policy: np.ndarray | None) -> bool:

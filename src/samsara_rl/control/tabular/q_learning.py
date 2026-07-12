@@ -6,8 +6,8 @@ from samsara_rl.prediction.td import TemporalDifference
 from samsara_rl.search.epsilon_greedy import EpsilonGreedy
 
 
-def td_target(policy: np.ndarray, state: int, q_table: np.ndarray) -> float:
-    result: float = q_table[state].max()
+def td_target(policy: np.ndarray, state: int, q: np.ndarray) -> float:
+    result: float = q[state].max()
     return result
 
 

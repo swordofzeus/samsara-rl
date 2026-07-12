@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
+from math import trunc
 from typing import Any
 
 import numpy as np
+from gymnasium.spaces.utils import flatdim
 
 from samsara_rl.search.sample_policy import SamplePolicy
 from samsara_rl.search.search import Search
+from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
+from samsara_rl.utils.history import History
 
 
 class Agent(ABC):
@@ -25,17 +29,23 @@ class Agent(ABC):
     """
 
     def __init__(
-        self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 0.9, search: Search | None = None
+        self,
+        mdp: Any,
+        policy: np.ndarray,
+        alpha: float = 0.01,
+        gamma: float = 0.9,
+        search: Search | None = None,
     ) -> None:
-        self.q_table: np.ndarray = np.zeros((mdp.STATE_COUNT, mdp.ACTION_COUNT))
         self.mdp = mdp
         self.policy: np.ndarray = policy
         self.gamma: float = gamma
         self.alpha: float = alpha
         self.search = search if search else SamplePolicy()
+        self.rewards_across_episodes = []
+        self.curr_episode = 0
 
     @abstractmethod
-    def post_visit(self, trajectory: np.ndarray) -> None:
+    def post_visit(self, trajectory: np.ndarray, terminal: bool) -> None:
         """Called after each step within an episode.
 
         Subclasses use this to perform per-step updates (e.g. TD
@@ -63,6 +73,13 @@ class Agent(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_q_values(self, state):
+        pass
+
+    def get_trajectory(self, table, seq):
+        return list(map(lambda x: x[0 : seq + 1], table))
+
     def run_episode(self) -> np.ndarray:
         """Generate a complete episode under the current policy.
 
@@ -74,24 +91,36 @@ class Agent(ABC):
             np.ndarray: Array of shape ``(T, 3)`` where each row is
                 ``[state, action, reward]``.
         """
-        curr_state, curr_step = self.mdp.initial_state(), 0
+        curr_state, _ = self.mdp.reset()
+        episode_history = History.from_gym(self.mdp, curr_state)
+        curr_action = self.search.step(
+            self.policy,
+            curr_state,
+            self.get_q_values(episode_history.current_state()),
+            0
+        )
 
-        trajectory = np.full((1000, 3), 0)
+        terminated = False
 
-        while not self.mdp.is_terminal_state(curr_state):
-            sampled_action = self.search.step(self.policy, curr_state, self.q_table)
-            reward, next_state = self.mdp.step(curr_state, sampled_action)
-            trajectory[curr_step][0] = curr_state
-            trajectory[curr_step][1] = sampled_action
-            trajectory[curr_step][2] = reward
-            curr_step += 1
+        while not terminated:
+
+            next_state, reward, terminated, truncated, info = self.mdp.step(curr_action)
+
+            next_action = self.search.step(
+                self.policy,
+                next_state,
+                self.get_q_values(next_state),
+                self.curr_episode,
+            )
+
+            episode_history.record(curr_action, reward, next_state, next_action)
             curr_state = next_state
-            self.post_visit(trajectory[0:curr_step])
+            curr_action = next_action
 
-        trajectory[curr_step][0] = curr_state
+            terminated = terminated or truncated
+            self.post_visit(episode_history, terminated)
 
-        self.post_visit(trajectory[0 : curr_step + 1])
-        return trajectory[0:curr_step]
+        return episode_history
 
     def evaluate(self, max_iter: int = 1000) -> None:
         """Run prediction for a fixed number of episodes.
@@ -104,4 +133,5 @@ class Agent(ABC):
         """
         for _ in range(0, max_iter):
             trajectory = self.run_episode()
+            self.curr_episode += 1
             self.post_episode(trajectory)

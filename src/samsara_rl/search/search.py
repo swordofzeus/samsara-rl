@@ -9,5 +9,5 @@ class Search(ABC):
     """
 
     @abstractmethod
-    def step(self, policy: np.ndarray, state: int, q_table: np.ndarray) -> int:
+    def step(self, policy: np.ndarray, state: int, q: np.ndarray) -> int:
         pass
