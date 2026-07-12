@@ -27,6 +27,10 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
    - [SARSA](#sarsa)
    - [Q-Learning](#q-learning)
 6. [Function Approximation](#function-approximation)
+   - [Linear Function Approximation](#linear-function-approximation)
+   - [Semi-Gradient TD(λ) Control](#semi-gradient-tdλ-control)
+   - [SARSA (Function Approximation)](#sarsa-function-approximation)
+   - [Q-Learning (Function Approximation)](#q-learning-function-approximation)
 
 ---
 
@@ -256,4 +260,76 @@ v_ql = ql.agent.q.max(axis=1).reshape(4, 4)
 
 ## Function Approximation
 
-TODO
+Tabular methods store one value per state-action pair — this breaks down when the state space is large or continuous (e.g. CartPole's 4D observation vector). Function approximation replaces the Q-table with a parameterized function Q(s, a; **w**) that generalizes across states.
+
+### Linear Function Approximation
+
+`LinearFunction` implements Q(s) = X(s)^T **W**, where X is a user-provided feature extraction function and **W** is a learned weight matrix. It exposes a PyTorch-style interface: forward pass via `__call__`, gradient computation via `backward()`, and parameter access via `params`.
+
+For discrete environments, a one-hot encoding X(s) gives the linear approximator the same representational power as a tabular method — useful as a sanity check before moving to richer feature representations.
+
+**`LinearFunction(feature_count, action_count, X, use_bias)`**
+
+| Argument        | Type       | Default    | Description                                         |
+|-----------------|------------|------------|-----------------------------------------------------|
+| `feature_count` | `int`      |            | Number of input features (output dimension of X)    |
+| `action_count`  | `int`      |            | Number of discrete actions                          |
+| `X`             | `Callable` | `identity` | Feature extraction function: state → feature vector |
+| `use_bias`      | `bool`     | `False`    | Whether to include a bias term per action           |
+
+### Semi-Gradient TD(λ) Control
+
+`TemporalDifferenceGradient` implements semi-gradient TD(λ) control with eligibility traces. On each step, the TD error is computed and used to update the function approximator's parameters in the direction of the gradient, scaled by eligibility traces that assign credit to recently visited state-action pairs.
+
+The TD target function is configurable — SARSA and Q-Learning are implemented as thin subclasses that fix the target.
+
+**`TemporalDifferenceGradient(mdp, policy, alpha, gamma, q, _lambda)`**
+
+| Argument  | Type             | Default  | Description                                    |
+|-----------|------------------|----------|------------------------------------------------|
+| `mdp`     | `gym.Env`        |          | Gymnasium-compatible environment               |
+| `policy`  | `array`          |          | Stochastic policy of shape `(S, A)`            |
+| `alpha`   | `float`          | `0.001`  | Learning rate                                  |
+| `gamma`   | `float`          | `1`      | Discount factor                                |
+| `q`       | `LinearFunction` |          | Function approximator                          |
+| `_lambda` | `float`          | `0.2`    | Eligibility trace decay (0 = TD(0), 1 = MC)   |
+
+### SARSA (Function Approximation)
+
+On-policy control. Bootstraps from Q(S', A') where A' is the action actually taken under the current ε-greedy policy.
+
+**`SarsaGradient(**kwargs)`** — accepts the same arguments as `TemporalDifferenceGradient`.
+
+### Q-Learning (Function Approximation)
+
+Off-policy control. Bootstraps from max_a Q(S', a), learning the optimal policy regardless of exploration behavior.
+
+**`QLearningGradient(**kwargs)`** — accepts the same arguments as `TemporalDifferenceGradient`.
+
+**Examples**
+
+```python
+import numpy as np
+from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
+from samsara_rl.control.function_approximation.functions.linear import LinearFunction
+from samsara_rl.control.function_approximation.sarsa import SarsaGradient
+from samsara_rl.utils.policy.policy_utils import init_uniform_random
+
+mdp = GridWorldMDP()
+policy = init_uniform_random(mdp)
+
+# One-hot encoding gives tabular-equivalent capacity
+def one_hot(s):
+    arr = np.zeros(16)
+    arr[int(s)] = 1
+    return arr
+
+q_fn = LinearFunction(16, 4, one_hot)
+
+# SARSA with function approximation
+sarsa = SarsaGradient(mdp=mdp, policy=policy, gamma=0.999, q=q_fn, alpha=0.01)
+sarsa.evaluate(max_iter=20000)
+
+# Learned value per state
+v = np.array([q_fn.W.value[s].max() for s in range(16)]).reshape(4, 4)
+```
