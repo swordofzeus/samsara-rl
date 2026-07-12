@@ -14,10 +14,12 @@ def one_hot_encoding():
     the same representational power as a tabular method, making it a
     useful sanity check for convergence.
     """
+
     def X(S: np.ndarray) -> np.ndarray:
         arr = np.zeros(16)
         arr[int(S)] = 1
         return arr
+
     return X
 
 

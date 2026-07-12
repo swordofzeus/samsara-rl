@@ -1,7 +1,9 @@
-import gymnasium as gym
 from enum import Enum
-from gymnasium import spaces
+from typing import Any
+
+import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 
 
 class GridWorldActions(Enum):
@@ -36,17 +38,12 @@ class GridWorldMDP(gym.Env):
         self.init_transition_probabilities()
         self.init_reward_matrix()
 
-
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Discrete(16)
 
-    def move(
-        self, state: tuple[int, int], x_direction: int, y_direction: int
-    ) -> list[tuple[int, int]]:
+    def move(self, state: tuple[int, int], x_direction: int, y_direction: int) -> list[tuple[int, int]]:
         next_step = (state[0] + x_direction, state[1] + y_direction)
-        if state in self.terminal_states or not self.in_bounds(
-            next_step[0], next_step[1]
-        ):
+        if state in self.terminal_states or not self.in_bounds(next_step[0], next_step[1]):
             return [state]
         else:
             return [next_step]
@@ -63,16 +60,11 @@ class GridWorldMDP(gym.Env):
     def right(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=0, y_direction=1)
 
-    def step(self, action: int) -> tuple[int, int]:
-        curr_state_transitions = self.state_action_transition_matrix[self.curr_state][
-            action
-        ]
-        next_state = np.random.choice(
-            len(curr_state_transitions), p=curr_state_transitions
-        )
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
+        curr_state_transitions = self.state_action_transition_matrix[self.curr_state][action]
+        next_state = np.random.choice(len(curr_state_transitions), p=curr_state_transitions)
         reward = self.reward_matrix[self.curr_state][action][next_state]
         self.curr_state = next_state
-        # return reward, next_state
         return (
             self.curr_state,
             reward,
@@ -93,16 +85,12 @@ class GridWorldMDP(gym.Env):
         actions. All actions are deterministic, ex: UP has 100% probability of upward movement and 0% into any
         of the other 15 states. At boarder collisions agent ends up in current state before action
         """
-        for curr_state_next_action in np.ndindex(
-            self.state_action_transition_matrix.shape[:-1]
-        ):
+        for curr_state_next_action in np.ndindex(self.state_action_transition_matrix.shape[:-1]):
             curr_state, action = curr_state_next_action
             curr_row, curr_col = self._unflatten(curr_state)
             next_state = self.actions[action]((curr_row, curr_col))[0]
             flattened_next_state = self._flatten(next_state[0], next_state[1])
-            self.state_action_transition_matrix[
-                curr_state, action, flattened_next_state
-            ] = 1
+            self.state_action_transition_matrix[curr_state, action, flattened_next_state] = 1
 
     def in_bounds(self, x: int, y: int) -> bool:
         return x in range(0, 4) and y in range(0, 4)
@@ -127,6 +115,9 @@ class GridWorldMDP(gym.Env):
     def is_terminal_state(self, state: int) -> bool:
         return state in self.terminal_states
 
-    def reset(self):
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
         self.curr_state = self.initial_state()
-        return self.curr_state, {'reward_matrix': self.reward_matrix, 'state_action_transition_matrix': self.state_action_transition_matrix}
+        return self.curr_state, {
+            "reward_matrix": self.reward_matrix,
+            "state_action_transition_matrix": self.state_action_transition_matrix,
+        }

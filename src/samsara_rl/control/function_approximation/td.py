@@ -1,11 +1,14 @@
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
 
-from samsara_rl.search.epsilon_greedy import EpsilonGreedy
 from samsara_rl.agent import Agent
 from samsara_rl.control.function_approximation.functions.linear import LinearFunction
-from samsara_rl.utils.target import sarsa_target, td_target
+from samsara_rl.search.epsilon_greedy import EpsilonGreedy
+from samsara_rl.utils.history import History
+from samsara_rl.utils.target import sarsa_target
+
 
 class TemporalDifferenceGradient(Agent):
     """Semi-gradient TD(lambda) control with function approximation.
@@ -23,6 +26,7 @@ class TemporalDifferenceGradient(Agent):
         q: Function approximator (e.g. LinearFunction).
         feature_count: Number of features (unused, kept for compatibility).
         _lambda: Eligibility trace decay rate.
+        target: TD target function.
     """
 
     def __init__(
@@ -34,34 +38,30 @@ class TemporalDifferenceGradient(Agent):
         q: LinearFunction | None = None,
         feature_count: int = 0,
         _lambda: float = 0.2,
-        target = sarsa_target
+        target: Callable[..., float] = sarsa_target,
     ) -> None:
         super().__init__(mdp, policy, alpha, gamma)
-        self.q: LinearFunction = q
+        self.q: LinearFunction = q  # type: ignore[assignment]
         self.td_target = target
         self._lambda: float = _lambda
         self.search = EpsilonGreedy(epsilon=1, epsilon_decay=0.99995)
-        self.eligibility_traces: list[np.ndarray] = [
-            np.zeros(p.value.shape) for p in self.q.params
-        ]
+        self.eligibility_traces: list[np.ndarray] = [np.zeros(p.value.shape) for p in self.q.params]
 
-    def get_q_values(self, curr_state: int) -> np.ndarray:
+    def get_q_values(self, curr_state: Any) -> np.ndarray:
         """Return Q values for all actions from the function approximator."""
         return self.q(curr_state)
 
-    def post_episode(self, trajectory: np.ndarray) -> None:
+    def post_episode(self, history: History) -> None:
         """Reset gradients and eligibility traces at the end of each episode."""
         self.q.zero_grad()
-        self.eligibility_traces = [
-            np.zeros(p.value.shape) for p in self.q.params
-        ]
+        self.eligibility_traces = [np.zeros(p.value.shape) for p in self.q.params]
 
-    def post_visit(self, history: np.ndarray, terminal=False) -> None:
+    def post_visit(self, history: History, terminal: bool = False) -> None:
         """Semi-gradient TD(lambda) update after each step."""
         if history.curr_index < 1:
             return
 
-        S: float = history.past_states()[-2]
+        S = history.past_states()[-2]
         A: int = int(history.past_actions()[-2])
         R: float = history.past_rewards()[-2]
 

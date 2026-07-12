@@ -1,5 +1,7 @@
 """SARSA control with function approximation."""
 
+from typing import Any
+
 from samsara_rl.control.function_approximation.td import TemporalDifferenceGradient
 from samsara_rl.utils.target import sarsa_target
 
@@ -17,5 +19,5 @@ class SarsaGradient(TemporalDifferenceGradient):
             Required keys include ``mdp``, ``policy``, and ``q``.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs, target=sarsa_target)

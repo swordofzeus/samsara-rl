@@ -6,7 +6,6 @@ isolates the learning algorithm from approximation error.
 """
 
 import numpy as np
-import pytest
 
 from samsara_rl.control.function_approximation.qlearning import QLearningGradient
 

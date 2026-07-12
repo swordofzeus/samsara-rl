@@ -51,11 +51,11 @@ def test_post_visit_eligibility_decay(grid_world_mdp, random_policy, two_step_hi
     """Eligibility traces should decay by lambda and set visited (S, A) to 1."""
     td = TemporalDifference(grid_world_mdp, random_policy, _lambda=0.4)
     td.post_visit(two_step_history)
-    assert td.elibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
+    assert td.eligibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
 
     td.post_visit(three_step_history, False)
-    assert td.elibility[14, 2] == 1.0, "Most recent (S, A) eligibility should be 1"
-    assert np.isclose(td.elibility[10, 1], 0.4), "Previous (S, A) eligibility should decay by lambda"
+    assert td.eligibility[14, 2] == 1.0, "Most recent (S, A) eligibility should be 1"
+    assert np.isclose(td.eligibility[10, 1], 0.4), "Previous (S, A) eligibility should decay by lambda"
 
 
 def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_policy):

@@ -1,4 +1,5 @@
-from typing import Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -38,15 +39,15 @@ class LinearFunction:
         self,
         feature_count: int,
         action_count: int,
-        X: Callable[[np.ndarray], np.ndarray] | None = None,
+        X: Callable[..., np.ndarray] | None = None,
         use_bias: bool = False,
     ) -> None:
-        self.X: Callable[[np.ndarray], np.ndarray] = X if X else lambda x: x
+        self.X: Callable[..., np.ndarray] = X if X else lambda x: x
         self.W: Node = Node(np.zeros((feature_count, action_count)))
         self.B: Node = Node(np.zeros(action_count))
         self.use_bias: bool = use_bias
         self.params: list[Node] = [self.W, self.B]
-        self.context: list[tuple[int, int]] = []
+        self.context: list[tuple[Any, int]] = []
 
     def zero_grad(self) -> None:
         """Reset all parameter gradients and clear the forward pass context."""
@@ -54,11 +55,11 @@ class LinearFunction:
             param.reset_grad()
         self.context = []
 
-    def __call__(self, S: int | np.integer, A: int | None = None) -> np.ndarray:
+    def __call__(self, S: Any, A: int | None = None) -> np.ndarray:
         """Forward pass. Records (S, A) in context if A is provided."""
         if A is not None:
             self.context.append((S, A))
-        result = self.X(S).dot(self.W.value)
+        result: np.ndarray = self.X(S).dot(self.W.value)
         return result + self.B.value if self.use_bias else result
 
     def backward(self) -> None:

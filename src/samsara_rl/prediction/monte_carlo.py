@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 
 from samsara_rl.agent import Agent
+from samsara_rl.utils.history import History
 
 
 class MonteCarloPrediction(Agent):
@@ -22,16 +23,14 @@ class MonteCarloPrediction(Agent):
         gamma: Discount factor.
     """
 
-    def __init__(
-        self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 1
-    ) -> None:
+    def __init__(self, mdp: Any, policy: np.ndarray, alpha: float = 0.01, gamma: float = 1) -> None:
         super().__init__(mdp, policy, alpha, gamma)
         self.q = np.zeros((mdp.observation_space.n, mdp.action_space.n))
 
-    def post_visit(self, trajectory: np.ndarray, terminal) -> None:
+    def post_visit(self, history: History, terminal: bool) -> None:
         return
 
-    def post_episode(self, history: np.ndarray) -> None:
+    def post_episode(self, history: History) -> None:
         """Update Q-table from a single episode trajectory.
 
         Uses advanced indexing to apply the constant-alpha MC update
@@ -39,13 +38,12 @@ class MonteCarloPrediction(Agent):
         (state, action) pair in the trajectory.
 
         Args:
-            trajectory: Array of shape ``(T, 3)`` where each row is
-                ``[state, action, reward]``.
+            history: The complete episode history.
         """
         # Compute discounted rewards from 0..N-1 excluding terminal state
-        discounted_trajectory = self._discounted_cum_trajectory(history.past_rewards()[0: -2])
-        s = history.past_states()[0: -2].astype(int)
-        a = history.past_actions()[0: -2].astype(int)
+        discounted_trajectory = self._discounted_cum_trajectory(history.past_rewards()[0:-2])
+        s = history.past_states()[0:-2].astype(int)
+        a = history.past_actions()[0:-2].astype(int)
 
         bellman_error = self.alpha * (discounted_trajectory - self.q[s, a])
         np.add.at(self.q, (s, a), bellman_error)
@@ -61,8 +59,7 @@ class MonteCarloPrediction(Agent):
         3. Multiply back by gamma powers to restore correct discounting.
 
         Args:
-            trajectory: Array of shape ``(T, 3)`` where column 2 contains
-                rewards.
+            reward: Array of shape ``(T,)`` containing rewards.
 
         Returns:
             Array of shape ``(T,)`` with the discounted return G_t for
@@ -76,5 +73,6 @@ class MonteCarloPrediction(Agent):
         result: np.ndarray = reversed_reward_cum[::-1]
         return result
 
-    def get_q_values(self, state):
-        return self.q[int(state)]
+    def get_q_values(self, state: Any) -> np.ndarray:
+        result: np.ndarray = self.q[int(state)]
+        return result

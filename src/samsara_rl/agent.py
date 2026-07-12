@@ -1,13 +1,10 @@
 from abc import ABC, abstractmethod
-from math import trunc
 from typing import Any
 
 import numpy as np
-from gymnasium.spaces.utils import flatdim
 
 from samsara_rl.search.sample_policy import SamplePolicy
 from samsara_rl.search.search import Search
-from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.history import History
 
 
@@ -41,11 +38,11 @@ class Agent(ABC):
         self.gamma: float = gamma
         self.alpha: float = alpha
         self.search = search if search else SamplePolicy()
-        self.rewards_across_episodes = []
+        self.rewards_across_episodes: list[float] = []
         self.curr_episode = 0
 
     @abstractmethod
-    def post_visit(self, trajectory: np.ndarray, terminal: bool) -> None:
+    def post_visit(self, history: History, terminal: bool) -> None:
         """Called after each step within an episode.
 
         Subclasses use this to perform per-step updates (e.g. TD
@@ -53,14 +50,13 @@ class Agent(ABC):
         only update at episode end (e.g. Monte Carlo).
 
         Args:
-            trajectory: Array of shape ``(t, 3)`` containing all steps
-                recorded so far in the current episode, where each row
-                is ``[state, action, reward]``.
+            history: The episode history recorded so far.
+            terminal: Whether the episode has terminated.
         """
         pass
 
     @abstractmethod
-    def post_episode(self, trajectory: np.ndarray) -> None:
+    def post_episode(self, history: History) -> None:
         """Called after a complete episode has been generated.
 
         Subclasses use this to perform end-of-episode updates
@@ -68,19 +64,15 @@ class Agent(ABC):
         per-episode state (e.g. eligibility traces).
 
         Args:
-            trajectory: Array of shape ``(T, 3)`` containing the full
-                episode, where each row is ``[state, action, reward]``.
+            history: The complete episode history.
         """
         pass
 
     @abstractmethod
-    def get_q_values(self, state):
+    def get_q_values(self, state: Any) -> np.ndarray:
         pass
 
-    def get_trajectory(self, table, seq):
-        return list(map(lambda x: x[0 : seq + 1], table))
-
-    def run_episode(self) -> np.ndarray:
+    def run_episode(self) -> History:
         """Generate a complete episode under the current policy.
 
         Samples actions from the policy and steps through the MDP until
@@ -88,23 +80,16 @@ class Agent(ABC):
         step so subclasses can perform online updates.
 
         Returns:
-            np.ndarray: Array of shape ``(T, 3)`` where each row is
-                ``[state, action, reward]``.
+            The episode history.
         """
         curr_state, _ = self.mdp.reset()
         episode_history = History.from_gym(self.mdp, curr_state)
-        curr_action = self.search.step(
-            self.policy,
-            curr_state,
-            self.get_q_values(episode_history.current_state()),
-            0
-        )
+        curr_action = self.search.step(self.policy, curr_state, self.get_q_values(episode_history.current_state()), 0)
 
         terminated = False
 
         while not terminated:
-
-            next_state, reward, terminated, truncated, info = self.mdp.step(curr_action)
+            next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
 
             next_action = self.search.step(
                 self.policy,
