@@ -16,9 +16,9 @@ check: ## Run code quality tools.
 	@uv run python -m deptry src
 
 .PHONY: test
-test: ## Test the code with pytest (optional: make test t=test_name)
+test: ## Test the code with pytest (optional: make test t=test_name f=file_path)
 	@echo "🚀 Testing code: Running pytest"
-	@uv run python -m pytest -s -v --cov --cov-config=pyproject.toml --cov-report=xml $(if $(t),-k $(t),)
+	@uv run python -m pytest -s -v --cov --cov-config=pyproject.toml --cov-report=xml $(if $(f),$(f),) $(if $(t),-k $(t),)
 
 .PHONY: build
 build: clean-build ## Build wheel file

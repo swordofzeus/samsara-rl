@@ -2,18 +2,6 @@ import numpy as np
 import pytest
 
 from samsara_rl.control.tabular.sarsa import Sarsa
-from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
-from samsara_rl.utils.policy.policy_utils import init_uniform_random
-
-
-@pytest.fixture
-def gw_mdp():
-    return GridWorldMDP()
-
-
-@pytest.fixture
-def random_policy(gw_mdp):
-    return init_uniform_random(gw_mdp)
 
 
 @pytest.fixture
@@ -38,11 +26,11 @@ def expected_sarsa_q():
     ])
 
 
-def test_sarsa_convergence(gw_mdp, random_policy, expected_sarsa_q):
+def test_sarsa_convergence(grid_world_mdp, random_policy, expected_sarsa_q):
     """SARSA should converge close to expected Q values for the grid world."""
-    sarsa = Sarsa(gw_mdp, random_policy, gamma=0.9)
+    sarsa = Sarsa(grid_world_mdp, random_policy, gamma=0.9)
     sarsa.evaluate(max_iter=5000)
-    q = sarsa.agent.q_table
+    q = sarsa.agent.q
 
     assert np.all(q[0] == 0.0), "Terminal state 0 should have Q=0"
     assert np.all(q[15] == 0.0), "Terminal state 15 should have Q=0"

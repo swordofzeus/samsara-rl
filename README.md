@@ -178,8 +178,8 @@ td = TemporalDifference(mdp, policy, alpha=0.01, gamma=0.9, _lambda=0.4)
 td.evaluate(max_iter=10000)
 
 # V(s) for the random policy (expected value over actions)
-v_mc = mc.q_table.mean(axis=1).reshape(4, 4)
-v_td = td.q_table.mean(axis=1).reshape(4, 4)
+v_mc = mc.q.mean(axis=1).reshape(4, 4)
+v_td = td.q.mean(axis=1).reshape(4, 4)
 ```
 
 ---
@@ -248,8 +248,8 @@ ql = QLearning(mdp, policy, alpha=0.01, gamma=0.9)
 ql.evaluate(max_iter=5000)
 
 # Optimal value per state (best action)
-v_sarsa = sarsa.agent.q_table.max(axis=1).reshape(4, 4)
-v_ql = ql.agent.q_table.max(axis=1).reshape(4, 4)
+v_sarsa = sarsa.agent.q.max(axis=1).reshape(4, 4)
+v_ql = ql.agent.q.max(axis=1).reshape(4, 4)
 ```
 
 ---

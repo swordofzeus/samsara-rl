@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
@@ -9,5 +10,5 @@ class Search(ABC):
     """
 
     @abstractmethod
-    def step(self, policy: np.ndarray, state: int, q_table: np.ndarray) -> int:
+    def step(self, policy: np.ndarray, state: Any, q: np.ndarray, episode: Any = None) -> int:
         pass

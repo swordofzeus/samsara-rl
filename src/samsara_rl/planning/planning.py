@@ -9,8 +9,8 @@ class Planning(ABC):
     def __init__(self, mdp: Any, bellman_tolerance: float = 0.01) -> None:
         self.mdp = mdp
         self.bellman_tolerance = bellman_tolerance
-        self.policy: np.ndarray = np.zeros((self.mdp.STATE_COUNT, self.mdp.ACTION_COUNT))
-        self.values: np.ndarray = np.zeros(self.mdp.STATE_COUNT)
+        self.policy: np.ndarray = np.zeros((self.mdp.observation_space.n, self.mdp.action_space.n))
+        self.values: np.ndarray = np.zeros(self.mdp.observation_space.n)
 
     @abstractmethod
     def find_optimal_policy(self) -> np.ndarray:
@@ -35,7 +35,7 @@ class Planning(ABC):
         expected_next_value = np.dot(self.mdp.state_action_transition_matrix, self.values)
 
         best_actions = np.argmax(expected_next_value, axis=1)
-        state_indices = np.arange(self.mdp.STATE_COUNT)
+        state_indices = np.arange(self.mdp.observation_space.n)
 
-        self.policy = np.zeros((self.mdp.STATE_COUNT, self.mdp.ACTION_COUNT))
+        self.policy = np.zeros((self.mdp.observation_space.n, self.mdp.action_space.n))
         self.policy[state_indices, best_actions] = 1.0

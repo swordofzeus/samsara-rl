@@ -7,8 +7,8 @@ from samsara_rl.search.epsilon_greedy import EpsilonGreedy
 from samsara_rl.utils.policy.policy_utils import sample
 
 
-def td_target(policy: np.ndarray, state: int, q_table: np.ndarray) -> float:
-    result: float = q_table[state, sample(policy, state)]
+def td_target(policy: np.ndarray, state: int, q: np.ndarray) -> float:
+    result: float = q[state, sample(policy, state)]
     return result
 
 

@@ -1,6 +1,9 @@
 from enum import Enum
+from typing import Any
 
+import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 
 
 class GridWorldActions(Enum):
@@ -10,7 +13,7 @@ class GridWorldActions(Enum):
     RIGHT = 3
 
 
-class GridWorldMDP:
+class GridWorldMDP(gym.Env):
     """
     Sample 4x4 Grid world as described in David Silvers 3rd RL Lecture.
     Consists of 4 actions, UP,DOWN,LEFT,RIGHT. Fully deterministic, transition probability is 1.0 for an action (i.e. UP will always
@@ -24,41 +27,19 @@ class GridWorldMDP:
     def __init__(self) -> None:
         self.terminal_states: list[tuple[int, int] | int] = [(0, 0), (3, 3), 0, 15]
         self.state_action_transition_matrix = np.zeros((16, 4, 16))
-        self.reward_matrix = np.full((16, 4, 16), -1)
-
         self.actions = {
             GridWorldActions.UP.value: self.up,
             GridWorldActions.DOWN.value: self.down,
             GridWorldActions.LEFT.value: self.left,
             GridWorldActions.RIGHT.value: self.right,
         }
+        self.reward_matrix = np.full((16, 4, 16), -1)
+        self.curr_state = self.initial_state()
         self.init_transition_probabilities()
         self.init_reward_matrix()
 
-    def step(self, state: int, action: int) -> tuple[int, int]:
-        curr_state_transitions = self.state_action_transition_matrix[state][action]
-        next_state = np.random.choice(len(curr_state_transitions), p=curr_state_transitions)
-        reward = self.reward_matrix[state][action][next_state]
-        return reward, next_state
-
-    def init_reward_matrix(self) -> None:
-        self.reward_matrix[0, :, 0] = 0
-        self.reward_matrix[15, :, 15] = 0
-
-    def init_transition_probabilities(self) -> None:
-        """
-        Initialize a 16x4x16 numpy matrix that captures the GridWorld
-        Deterministic Dynamics. 16 possible starting states, 4 actions from each of those states
-        and 16 possible states the agent can end up in after invoking one of the 4 UP,DOWN,LEFT,RIGHT
-        actions. All actions are deterministic, ex: UP has 100% probability of upward movement and 0% into any
-        of the other 15 states. At boarder collisions agent ends up in current state before action
-        """
-        for curr_state_next_action in np.ndindex(self.state_action_transition_matrix.shape[:-1]):
-            curr_state, action = curr_state_next_action
-            curr_row, curr_col = self._unflatten(curr_state)
-            next_state = self.actions[action]((curr_row, curr_col))[0]
-            flattened_next_state = self._flatten(next_state[0], next_state[1])
-            self.state_action_transition_matrix[curr_state, action, flattened_next_state] = 1
+        self.action_space = spaces.Discrete(4)
+        self.observation_space = spaces.Discrete(16)
 
     def move(self, state: tuple[int, int], x_direction: int, y_direction: int) -> list[tuple[int, int]]:
         next_step = (state[0] + x_direction, state[1] + y_direction)
@@ -78,6 +59,38 @@ class GridWorldMDP:
 
     def right(self, state: tuple[int, int]) -> list[tuple[int, int]]:
         return self.move(state, x_direction=0, y_direction=1)
+
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
+        curr_state_transitions = self.state_action_transition_matrix[self.curr_state][action]
+        next_state = np.random.choice(len(curr_state_transitions), p=curr_state_transitions)
+        reward = self.reward_matrix[self.curr_state][action][next_state]
+        self.curr_state = next_state
+        return (
+            self.curr_state,
+            reward,
+            self.is_terminal_state(next_state),
+            False,
+            {},
+        )
+
+    def init_reward_matrix(self) -> None:
+        self.reward_matrix[0, :, 0] = 0
+        self.reward_matrix[15, :, 15] = 0
+
+    def init_transition_probabilities(self) -> None:
+        """
+        Initialize a 16x4x16 numpy matrix that captures the GridWorld
+        Deterministic Dynamics. 16 possible starting states, 4 actions from each of those states
+        and 16 possible states the agent can end up in after invoking one of the 4 UP,DOWN,LEFT,RIGHT
+        actions. All actions are deterministic, ex: UP has 100% probability of upward movement and 0% into any
+        of the other 15 states. At boarder collisions agent ends up in current state before action
+        """
+        for curr_state_next_action in np.ndindex(self.state_action_transition_matrix.shape[:-1]):
+            curr_state, action = curr_state_next_action
+            curr_row, curr_col = self._unflatten(curr_state)
+            next_state = self.actions[action]((curr_row, curr_col))[0]
+            flattened_next_state = self._flatten(next_state[0], next_state[1])
+            self.state_action_transition_matrix[curr_state, action, flattened_next_state] = 1
 
     def in_bounds(self, x: int, y: int) -> bool:
         return x in range(0, 4) and y in range(0, 4)
@@ -101,3 +114,10 @@ class GridWorldMDP:
 
     def is_terminal_state(self, state: int) -> bool:
         return state in self.terminal_states
+
+    def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+        self.curr_state = self.initial_state()
+        return self.curr_state, {
+            "reward_matrix": self.reward_matrix,
+            "state_action_transition_matrix": self.state_action_transition_matrix,
+        }
