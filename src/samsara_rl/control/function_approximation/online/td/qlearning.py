@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from samsara_rl.control.function_approximation.td import TemporalDifferenceGradient
+from samsara_rl.control.function_approximation.online.td.td import TemporalDifferenceGradient
 from samsara_rl.utils.target import qlearning_target
 
 
@@ -20,4 +20,4 @@ class QLearningGradient(TemporalDifferenceGradient):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, target=qlearning_target, _lambda=1)
+        super().__init__(**kwargs, target=qlearning_target, _lambda=0)

@@ -12,9 +12,12 @@ class EpsilonGreedy(Search):
             raise ValueError(epsilon)
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
+        self.epsilon_min = 0.05
+
+    def decay(self) -> None:
+        self.epsilon = self.epsilon * self.epsilon_decay if self.epsilon > self.epsilon_min else self.epsilon_min
 
     def step(self, policy: np.ndarray, state: Any, action_values: np.ndarray, episode: Any = None) -> int:
-        self.epsilon = self.epsilon * self.epsilon_decay
         exploit = random.uniform(0, 1) > self.epsilon
         sampled_action = action_values.argmax(axis=0) if exploit else random.randint(0, action_values.shape[0] - 1)
         return int(sampled_action)

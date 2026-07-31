@@ -12,3 +12,6 @@ class Search(ABC):
     @abstractmethod
     def step(self, policy: np.ndarray, state: Any, q: np.ndarray, episode: Any = None) -> int:
         pass
+
+    def decay(self) -> None:  # noqa: B027
+        pass

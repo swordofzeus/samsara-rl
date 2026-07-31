@@ -52,3 +52,12 @@ class History:
         action_space = action_output_dim(env.action_space)
         state_space = state_output_dim(env.observation_space)
         return History(state_space, action_space, s)
+
+    @classmethod
+    def from_data(cls, states: np.ndarray, actions: np.ndarray, rewards: np.ndarray) -> History:
+        history = History(1, 1, 1)
+        history.states = states
+        history.actions = actions
+        history.rewards = rewards
+        history.curr_index = len(states) - 1
+        return history

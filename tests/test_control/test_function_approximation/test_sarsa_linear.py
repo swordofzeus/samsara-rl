@@ -7,7 +7,7 @@ isolates the learning algorithm from approximation error.
 
 import numpy as np
 
-from samsara_rl.control.function_approximation.sarsa import SarsaGradient
+from samsara_rl.control.function_approximation.online.td.sarsa import SarsaGradient
 
 
 def test_sarsa_convergence_grid_world(grid_world_mdp, random_policy, linear_q):
