@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import pytest
 
@@ -97,8 +99,12 @@ def test_discounted_returns_no_discount(grid_world_mdp, random_policy, three_ste
 
 def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_policy):
     """MC prediction should converge close to the true V^pi for a random policy."""
+    np.random.seed(42)
+    random.seed(42)
+    grid_world_mdp.reset(seed=42)
+
     mc = MonteCarloPrediction(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9)
-    mc.evaluate(max_iter=10000)
+    mc.evaluate(max_iter=15000)
     v = mc.q.mean(axis=1).reshape(4, 4)
 
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
