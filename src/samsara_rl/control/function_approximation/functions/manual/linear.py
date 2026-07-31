@@ -16,7 +16,6 @@ class Node:
     def shape(self) -> tuple[int, ...]:
         return self.data.shape
 
-
     def __init__(self, value: np.ndarray) -> None:
         self.data: np.ndarray = value
         self.grad: np.ndarray = np.zeros(value.shape)

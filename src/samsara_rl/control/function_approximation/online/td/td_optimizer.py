@@ -3,11 +3,11 @@ from typing import Any
 import numpy as np
 import torch
 
-from samsara_rl.control.function_approximation.functions.manual.linear import Node
-
 
 class TDOptimizer:
-    def __init__(self, q: Any, alpha: float, gamma: float, _lambda: float, eligibility_traces: list[np.ndarray]) -> None:
+    def __init__(
+        self, q: Any, alpha: float, gamma: float, _lambda: float, eligibility_traces: list[np.ndarray]
+    ) -> None:
         self.q = q
         self.alpha = alpha
         self.gamma = gamma

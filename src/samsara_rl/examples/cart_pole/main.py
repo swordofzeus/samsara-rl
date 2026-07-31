@@ -76,7 +76,6 @@ def save_model(lf: LinearFunction, run_dir: str) -> None:
         pickle.dump({"W": lf.W.data, "B": lf.B.data}, f)
 
 
-
 def run_experiment(env: TerminalPenaltyWrapper, feat_config: dict[str, Any], use_bias: bool, alpha: float) -> None:
     """Train and evaluate a single configuration.
 

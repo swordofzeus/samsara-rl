@@ -6,9 +6,10 @@ import torch.nn as nn
 
 
 class LinearNetwork(nn.Module):
-
-    def __init__(self, input_dim: int, output_dim: int, bias: bool, preprocess: Callable[..., torch.Tensor] | None = None) -> None:
-        super(LinearNetwork, self).__init__()
+    def __init__(
+        self, input_dim: int, output_dim: int, bias: bool, preprocess: Callable[..., torch.Tensor] | None = None
+    ) -> None:
+        super().__init__()
         self.w = nn.Linear(input_dim, output_dim, bias=bias, dtype=torch.float64)
         nn.init.zeros_(self.w.weight)
         nn.init.zeros_(self.w.bias) if bias else None

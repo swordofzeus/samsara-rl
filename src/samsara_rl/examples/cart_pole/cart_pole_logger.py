@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 
 class CartPoleLogger:
-
     def __call__(self, agent: "Agent") -> None:
         if not agent.tensorboard:
             return
@@ -33,10 +32,18 @@ class CartPoleLogger:
         q_left_falling = self.get_q(np.array([0, 0, 0.10, -1.00]))
         q_right_falling = self.get_q(np.array([0, 0, 0.10, 1.00]))
 
-        self.tb.log_metric(epoch=self.episode, metric_name="Probe/LeaningLeftFallingLeft/PushLeft", value=q_left_falling[0])
-        self.tb.log_metric(epoch=self.episode, metric_name="Probe/LeaningLeftFallingLeft/PushRight", value=q_left_falling[1])
-        self.tb.log_metric(epoch=self.episode, metric_name="Probe/LeaningRightFallingRight/PushLeft", value=q_right_falling[0])
-        self.tb.log_metric(epoch=self.episode, metric_name="Probe/LeaningRightFallingRight/PushRight", value=q_right_falling[1])
+        self.tb.log_metric(
+            epoch=self.episode, metric_name="Probe/LeaningLeftFallingLeft/PushLeft", value=q_left_falling[0]
+        )
+        self.tb.log_metric(
+            epoch=self.episode, metric_name="Probe/LeaningLeftFallingLeft/PushRight", value=q_left_falling[1]
+        )
+        self.tb.log_metric(
+            epoch=self.episode, metric_name="Probe/LeaningRightFallingRight/PushLeft", value=q_right_falling[0]
+        )
+        self.tb.log_metric(
+            epoch=self.episode, metric_name="Probe/LeaningRightFallingRight/PushRight", value=q_right_falling[1]
+        )
 
     def _log_probe_angle_only(self) -> None:
         q_right = self.get_q(np.array([0.0, 0.0, 0.18, 0.0]))
@@ -71,7 +78,9 @@ class CartPoleLogger:
         for i in range(w.shape[0]):
             for j in range(w.shape[1]):
                 action_name = "Left" if j == 0 else "Right"
-                self.tb.log_metric(epoch=self.episode, metric_name=f"Weights/feature{i}_action{action_name}", value=w[i, j])
+                self.tb.log_metric(
+                    epoch=self.episode, metric_name=f"Weights/feature{i}_action{action_name}", value=w[i, j]
+                )
 
     def _log_decision_boundary(self, agent: "Agent") -> None:
         if self.episode % 10000 == 0 and hasattr(agent, "log_decision_boundary"):
