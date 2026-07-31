@@ -104,7 +104,7 @@ def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_p
     grid_world_mdp.reset(seed=42)
 
     mc = MonteCarloPrediction(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9)
-    mc.evaluate(max_iter=10000)
+    mc.evaluate(max_iter=15000)
     v = mc.q.mean(axis=1).reshape(4, 4)
 
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
