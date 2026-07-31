@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from samsara_rl.control.function_approximation.functions.linear import LinearFunction
+from samsara_rl.control.function_approximation.functions.manual.linear import LinearFunction
 
 
 @pytest.fixture

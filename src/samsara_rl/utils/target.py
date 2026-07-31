@@ -2,7 +2,7 @@ from typing import Any
 
 import numpy as np
 
-from samsara_rl.control.function_approximation.functions.linear import LinearFunction
+from samsara_rl.control.function_approximation.functions.manual.linear import LinearFunction
 from samsara_rl.utils.history import History
 
 

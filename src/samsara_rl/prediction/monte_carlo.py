@@ -41,9 +41,9 @@ class MonteCarloPrediction(Agent):
             history: The complete episode history.
         """
         # Compute discounted rewards from 0..N-1 excluding terminal state
-        discounted_trajectory = self._discounted_cum_trajectory(history.past_rewards()[0:-2])
-        s = history.past_states()[0:-2].astype(int)
-        a = history.past_actions()[0:-2].astype(int)
+        discounted_trajectory = self._discounted_cum_trajectory(history.past_rewards()[0:-1])
+        s = history.past_states()[0:-1].astype(int)
+        a = history.past_actions()[0:-1].astype(int)
 
         bellman_error = self.alpha * (discounted_trajectory - self.q[s, a])
         np.add.at(self.q, (s, a), bellman_error)

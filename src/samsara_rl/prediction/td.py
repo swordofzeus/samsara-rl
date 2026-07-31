@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import torch
 
 from samsara_rl.agent import Agent
 from samsara_rl.search.search import Search
@@ -47,7 +48,8 @@ class TemporalDifference(Agent):
 
         R_prime = history.past_rewards()[-2]
         S_prime = history.past_states()[-1].astype(int)
-        Q_expectation = self.td_target(self.policy, S_prime, self.q)
+        with torch.no_grad():
+            Q_expectation = self.td_target(self.policy, S_prime, self.q)
 
         S = history.past_states()[-2].astype(int)
         A = history.past_actions()[-2].astype(np.int8)

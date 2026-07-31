@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from samsara_rl.control.function_approximation.td import TemporalDifferenceGradient
+from samsara_rl.control.function_approximation.online.td.td import TemporalDifferenceGradient
 from samsara_rl.utils.target import sarsa_target
 
 

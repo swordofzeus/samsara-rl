@@ -12,13 +12,18 @@ class Node:
         grad: Accumulated gradient, same shape as value.
     """
 
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self.data.shape
+
+
     def __init__(self, value: np.ndarray) -> None:
-        self.value: np.ndarray = value
+        self.data: np.ndarray = value
         self.grad: np.ndarray = np.zeros(value.shape)
 
     def reset_grad(self) -> None:
         """Zero out the gradient."""
-        self.grad = np.zeros(self.value.shape)
+        self.grad = np.zeros(self.data.shape)
 
 
 class LinearFunction:
@@ -33,6 +38,7 @@ class LinearFunction:
         X: Feature extraction function mapping raw state to a feature
             vector of length feature_count. Defaults to identity.
         use_bias: Whether to include a bias term per action.
+
     """
 
     def __init__(
@@ -43,7 +49,7 @@ class LinearFunction:
         use_bias: bool = False,
     ) -> None:
         self.X: Callable[..., np.ndarray] = X if X else lambda x: x
-        self.W: Node = Node(np.zeros((feature_count, action_count)))
+        self.W: Node = Node(np.zeros((action_count, feature_count)))
         self.B: Node = Node(np.zeros(action_count))
         self.use_bias: bool = use_bias
         self.params: list[Node] = [self.W, self.B]
@@ -59,12 +65,15 @@ class LinearFunction:
         """Forward pass. Records (S, A) in context if A is provided."""
         if A is not None:
             self.context.append((S, A))
-        result: np.ndarray = self.X(S).dot(self.W.value)
-        return result + self.B.value if self.use_bias else result
+        result: np.ndarray = self.W.data.dot(self.X(S))
+        return result + self.B.data if self.use_bias else result
 
-    def backward(self) -> None:
+    def backward(self, upstream: float = 0) -> None:
         """Accumulate local gradients for all recorded (S, A) pairs."""
         for state, action in self.context:
-            self.W.grad[:, action] += self.X(state)
-            self.B.grad[action] += 1
+            self.W.grad[action] += upstream * self.X(state)
+            self.B.grad[action] += upstream * 1
         self.context = []
+
+    def parameters(self) -> list["Node"]:
+        return self.params
