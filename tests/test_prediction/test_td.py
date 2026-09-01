@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from samsara_rl.prediction.td import TemporalDifference
-from samsara_rl.utils.history import History
+from samsara_rl.utils.memory.episode import Episode
 
 
 @pytest.fixture
@@ -17,16 +17,16 @@ def expected_v_random_policy():
 
 @pytest.fixture
 def two_step_history():
-    """History with S=10, A=1, R=-1, S'=14, A'=2."""
-    h = History(1, 1, 10)
+    """Episode with S=10, A=1, R=-1, S'=14, A'=2."""
+    h = Episode(1, 1, 10)
     h.record(action=1, reward=-1.0, s_prime=14, a_prime=2)
     return h
 
 
 @pytest.fixture
 def three_step_history(two_step_history):
-    """History with S=10 -> S=14 -> S=13."""
-    h = History(1, 1, 10)
+    """Episode with S=10 -> S=14 -> S=13."""
+    h = Episode(1, 1, 10)
     h.record(action=1, reward=-1.0, s_prime=14, a_prime=2)
     h.record(action=2, reward=-1.0, s_prime=13, a_prime=3)
     return h
@@ -35,7 +35,7 @@ def three_step_history(two_step_history):
 def test_post_visit_single_step(grid_world_mdp, random_policy):
     """post_visit with a single-step trajectory should be a no-op."""
     td = TemporalDifference(grid_world_mdp, random_policy)
-    history = History(1, 1, 10)
+    history = Episode(1, 1, 10)
     td.post_visit(history)
     assert np.all(td.q == 0), "Q-table should be unchanged after a single-step trajectory"
 

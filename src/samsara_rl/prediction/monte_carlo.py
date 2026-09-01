@@ -3,7 +3,7 @@ from typing import Any
 import numpy as np
 
 from samsara_rl.agent import Agent
-from samsara_rl.utils.history import History
+from samsara_rl.utils.memory.episode import Episode
 
 
 class MonteCarloPrediction(Agent):
@@ -27,10 +27,10 @@ class MonteCarloPrediction(Agent):
         super().__init__(mdp, policy, alpha, gamma)
         self.q = np.zeros((mdp.observation_space.n, mdp.action_space.n))
 
-    def post_visit(self, history: History, terminal: bool) -> None:
+    def post_visit(self, history: Episode, terminal: bool) -> None:
         return
 
-    def post_episode(self, history: History) -> None:
+    def post_episode(self, history: Episode) -> None:
         """Update Q-table from a single episode trajectory.
 
         Uses advanced indexing to apply the constant-alpha MC update

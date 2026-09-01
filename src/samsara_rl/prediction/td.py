@@ -6,7 +6,7 @@ import torch
 
 from samsara_rl.agent import Agent
 from samsara_rl.search.search import Search
-from samsara_rl.utils.history import History
+from samsara_rl.utils.memory.episode import Episode
 
 
 def td_expectation(policy: np.ndarray, state: int, q: np.ndarray) -> float:
@@ -35,10 +35,10 @@ class TemporalDifference(Agent):
         result: np.ndarray = self.q[int(state)]
         return result
 
-    def post_episode(self, history: History) -> None:
+    def post_episode(self, history: Episode) -> None:
         self.eligibility = np.zeros((self.mdp.observation_space.n, self.mdp.action_space.n))
 
-    def post_visit(self, history: History, terminal: bool = False) -> None:
+    def post_visit(self, history: Episode, terminal: bool = False) -> None:
         if history.curr_index < 1:
             return
         self.eligibility = self.eligibility * self._lambda

@@ -211,4 +211,7 @@ marimo/_lsp/
 __marimo__/
 docs/*
 src/samsara_rl/control/function_approximation/batch/q_network.py
-logs/*
+*logs/
+**/logs/
+**/log*/
+examples/**/log*/

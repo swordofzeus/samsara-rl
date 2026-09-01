@@ -5,8 +5,9 @@ import numpy as np
 
 from samsara_rl.search.sample_policy import SamplePolicy
 from samsara_rl.search.search import Search
-from samsara_rl.utils.history import History
+from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.logging.tensor_board import TensorBoardLogger
+from samsara_rl.utils.memory.episode import Episode
 
 
 class Agent(ABC):
@@ -37,6 +38,7 @@ class Agent(ABC):
         log_dir: str | None = None,
         autograd: bool = False,
         post_episode_hooks: list[Any] | None = None,
+        post_visit_hooks: list[Any] | None = None,
     ) -> None:
         self.mdp = mdp
         self.policy: np.ndarray = policy
@@ -51,9 +53,12 @@ class Agent(ABC):
             else None
         )
         self.post_episode_hooks = post_episode_hooks if post_episode_hooks is not None else []
+        self.post_visit_hooks = post_visit_hooks if post_visit_hooks is not None else []
+        self.action_space = action_output_dim(self.mdp.action_space)
+        self.observation_space = state_output_dim(self.mdp.observation_space)
 
     @abstractmethod
-    def post_visit(self, history: History, terminal: bool) -> None:
+    def post_visit(self, history: Episode, terminal: bool) -> None:
         """Called after each step within an episode.
 
         Subclasses use this to perform per-step updates (e.g. TD
@@ -67,7 +72,7 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def post_episode(self, history: History) -> None:
+    def post_episode(self, history: Episode) -> None:
         """Called after a complete episode has been generated.
 
         Subclasses use this to perform end-of-episode updates
@@ -80,13 +85,16 @@ class Agent(ABC):
         pass
 
     def register(self, hook: Any) -> None:
-        self.post_episode_hooks.append(hook)
+        if hasattr(hook, "on_episode"):
+            self.post_episode_hooks.append(hook.on_episode)
+        if hasattr(hook, "on_visit"):
+            self.post_visit_hooks.append(hook.on_visit)
 
     @abstractmethod
     def get_q_values(self, state: Any) -> np.ndarray:
         pass
 
-    def run_episode(self) -> History:
+    def run_episode(self) -> Episode:
         """Generate a complete episode under the current policy.
 
         Samples actions from the policy and steps through the MDP until
@@ -97,7 +105,7 @@ class Agent(ABC):
             The episode history.
         """
         curr_state, _ = self.mdp.reset()
-        episode_history = History.from_gym(self.mdp, curr_state)
+        episode_history = Episode.from_gym(self.mdp, curr_state)
         curr_action = self.search.step(
             self.policy,
             curr_state,
@@ -123,6 +131,7 @@ class Agent(ABC):
 
             terminated = terminated or truncated
             self.post_visit(episode_history, terminated)
+            [hook(self) for hook in self.post_visit_hooks]
 
         return episode_history
 
@@ -138,13 +147,13 @@ class Agent(ABC):
         for episode in range(0, max_iter):
             trajectory = self.run_episode()
             self.curr_episode += 1
-            self.post_episode(trajectory)
             self.log_metrics(trajectory, episode)
+            [hook(self) for hook in self.post_episode_hooks]
+            self.post_episode(trajectory)
             if episode % 20 == 0 and self.tensorboard:
                 self.tensorboard.flush()
-            [hook(self) for hook in self.post_episode_hooks]
 
-    def log_metrics(self, trajectory: History, episode_number: int) -> None:
+    def log_metrics(self, trajectory: Episode, episode_number: int) -> None:
         if self.tensorboard:
             self.tensorboard.log_metric(
                 epoch=episode_number,
