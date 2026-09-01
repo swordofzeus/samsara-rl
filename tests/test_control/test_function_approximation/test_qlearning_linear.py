@@ -28,7 +28,6 @@ def test_qlearning_convergence_grid_world(grid_world_mdp, random_policy, linear_
 
     # Collect V(s) = max_a Q(s, a) for each state
     v = np.array([linear_q(s).max(axis=0) for s in range(16)]).reshape(4, 4)
-    print(v)
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
     assert v[3, 3] == 0.0, "Terminal state (3,3) should be 0"
     assert np.all(v[1:, :-1] < 0), "Non-terminal states should have negative values"

@@ -12,7 +12,7 @@ from samsara_rl.control.function_approximation.online.td.td_optimizer import (
     TDOptimizer,
 )
 from samsara_rl.search.epsilon_greedy import EpsilonGreedy
-from samsara_rl.utils.history import History
+from samsara_rl.utils.memory.episode import Episode
 from samsara_rl.utils.target import sarsa_target
 
 
@@ -73,16 +73,17 @@ class TemporalDifferenceGradient(Agent):
 
     def get_q_values(self, curr_state: Any) -> np.ndarray:
         """Return Q values for all actions from the function approximator."""
+        # input()
         return self.q(curr_state)
 
-    def post_episode(self, history: History) -> None:
+    def post_episode(self, history: Episode) -> None:
         """Reset gradients and eligibility traces at the end of each episode."""
         self.q.zero_grad()
         self.eligibility_traces = [np.zeros(p.shape) for p in self.q.parameters()]
         self.td_optimizer.eligibility_traces = self.eligibility_traces
         self.search.decay()
 
-    def post_visit(self, history: History, terminal: bool = False) -> None:
+    def post_visit(self, history: Episode, terminal: bool = False) -> None:
         """Semi-gradient TD(lambda) update after each step."""
         if history.curr_index < 1:
             return
