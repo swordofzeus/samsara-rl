@@ -12,6 +12,23 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 
 ---
 
+## Algorithms
+
+| Algorithm | Category | How It Works | Good For | Limitations |
+|-----------|----------|-------------|----------|-------------|
+| [Policy Iteration](#policy-iteration) | Planning | Alternates policy evaluation (Bellman expectation) and greedy improvement until convergence | Small MDPs with known dynamics | Requires full model (transition + reward matrices) |
+| [Value Iteration](#value-iteration) | Planning | Applies Bellman optimality equation directly; extracts policy at convergence | Small MDPs with known dynamics | Requires full model; slower per-iteration than policy iteration for large state spaces |
+| [Monte Carlo](#monte-carlo) | Tabular Prediction | Estimates Q(s, a) from sampled episode returns using constant-alpha updates | Episodic tasks; unbiased value estimates | High variance; must wait until episode end |
+| [TD(λ)](#tdλ) | Tabular Prediction | One-step bootstrapping with eligibility traces for online Q updates | Online learning; continuous tasks | Biased estimates from bootstrapping |
+| [SARSA](#sarsa) | Tabular Control | On-policy TD control; bootstraps from action actually taken under ε-greedy | Safe exploration; risk-sensitive tasks | Learns ε-greedy value, not optimal value |
+| [Q-Learning](#q-learning) | Tabular Control | Off-policy TD control; bootstraps from max Q(S', a) regardless of action taken | Learning optimal policy while exploring | Maximization bias; can overestimate Q values |
+| [Linear Semi-Gradient TD(λ)](#semi-gradient-tdλ-control) | Value Approximation | TD(λ) with linear function approximation and eligibility traces | Large/continuous state spaces with known features | Linear capacity; requires manual feature engineering |
+| [DQN](#deep-q-network) | Value Approximation | Neural network Q-function with replay buffer and target network | High-dimensional continuous state spaces | Maximization bias; training instability |
+| [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
+| REINFORCE | Policy Gradient | TODO | TODO | TODO |
+
+---
+
 ## Table of Contents
 
 1. [Installation](#installation)
@@ -31,6 +48,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
    - [Semi-Gradient TD(λ) Control](#semi-gradient-tdλ-control)
    - [SARSA (Function Approximation)](#sarsa-function-approximation)
    - [Q-Learning (Function Approximation)](#q-learning-function-approximation)
+7. [Deep Q-Network](#deep-q-network)
 
 ---
 
@@ -119,7 +137,7 @@ Model-free methods learn value functions directly from experience (sampled episo
 
 Every-visit Monte Carlo prediction estimates Q(s, a) from sampled returns. After each episode, the return G_t (discounted cumulative reward from time step t onward) is computed for every visited state-action pair, and the Q-table is updated using constant-alpha learning:
 
-Q(s, a) ← Q(s, a) + α (G_t − Q(s, a))
+Q(s, a) <- Q(s, a) + α (G_t - Q(s, a))
 
 If the same (s, a) pair appears multiple times in an episode, each occurrence triggers an update. Returns are computed in a fully vectorized pass using a cumulative-sum trick that avoids the standard reverse loop over time steps.
 
@@ -142,9 +160,9 @@ If the same (s, a) pair appears multiple times in an episode, each occurrence tr
 
 TD(λ) learns Q(s, a) online using one-step bootstrapping with eligibility traces. After each step, the TD error is computed against the expected Q-value of the next state under the current policy, and all previously visited state-action pairs are updated proportionally to their eligibility:
 
-δ = R + γ E_π[Q(S', ·)] − Q(S, A)
+δ = R + γ E_π[Q(S', ·)] - Q(S, A)
 
-Q(s, a) ← Q(s, a) + α δ e(s, a)
+Q(s, a) <- Q(s, a) + α δ e(s, a)
 
 Eligibility traces use the replacing variant — on each visit to (s, a), the trace is set to 1 rather than incremented. All traces decay by γλ at each time step. Traces are reset to zero between episodes.
 
@@ -196,7 +214,7 @@ Control algorithms learn an optimal policy by interleaving evaluation and improv
 
 On-policy TD control. Bootstraps from a sampled next action A' drawn from the current policy — the name comes from the quintuple (S, A, R, S', A'). Because the bootstrap target reflects the exploratory policy, SARSA's Q values account for the cost of occasional random actions.
 
-δ = R + γ Q(S', A') − Q(S, A)
+δ = R + γ Q(S', A') - Q(S, A)
 
 **`Sarsa(mdp, policy, alpha, gamma)`**
 
@@ -217,7 +235,7 @@ On-policy TD control. Bootstraps from a sampled next action A' drawn from the cu
 
 Off-policy TD control. Bootstraps from the greedy action max_a Q(S', a) regardless of the action actually taken. This means Q-Learning converges to the optimal Q* even while following an exploratory ε-greedy policy.
 
-δ = R + γ max_a Q(S', a) − Q(S, A)
+δ = R + γ max_a Q(S', a) - Q(S, A)
 
 **`QLearning(mdp, policy, alpha, gamma)`**
 
@@ -333,3 +351,60 @@ sarsa.evaluate(max_iter=20000)
 # Learned value per state
 v = np.array([q_fn.W.value[s].max() for s in range(16)]).reshape(4, 4)
 ```
+
+---
+
+## Deep Q-Network
+
+Deep Q-Networks (DQN) replace the linear function approximator with a neural network, enabling learning in high-dimensional continuous state spaces. Two key innovations stabilize training:
+
+- **Experience Replay** — transitions are stored in a replay buffer and sampled in random mini-batches, breaking temporal correlations in the training data.
+- **Target Network** — a frozen copy of the Q-network provides stable TD targets. It is periodically updated to match the online network.
+
+The target computation strategy is configurable. Standard DQN uses the target network for both action selection and evaluation. **Double DQN** decouples these — the online network selects the action, and the target network evaluates it — reducing the maximization bias that causes Q-value overestimation and training instability.
+
+**`QNetwork(mdp, policy, alpha, gamma, q, target, target_update_freq, epsilon, epsilon_decay, loss_fn, batch_size)`**
+
+| Argument             | Type         | Default      | Description                                         |
+|----------------------|--------------|--------------|-----------------------------------------------------|
+| `mdp`                | `gym.Env`    |              | Gymnasium-compatible environment                    |
+| `policy`             | `array`      |              | Stochastic policy (can be `None` for DQN)           |
+| `alpha`              | `float`      | `0.001`      | Learning rate for Adam optimizer                    |
+| `gamma`              | `float`      | `1`          | Discount factor                                     |
+| `q`                  | `nn.Module`  |              | Neural network mapping states to Q values           |
+| `target`             | `object`     | `DQNTarget`  | Target computation strategy (`DQNTarget` or `DoubleDQNTarget`) |
+| `target_update_freq` | `int`        | `1000`       | Training steps between target network swaps         |
+| `epsilon`            | `float`      | `1`          | Initial exploration rate for ε-greedy               |
+| `epsilon_decay`      | `float`      | `0.999`      | Multiplicative decay applied to epsilon each episode |
+| `loss_fn`            | `Callable`   | `MSELoss`    | Loss function (e.g. `MSELoss`, `HuberLoss`)        |
+| `batch_size`         | `int`        | `128`        | Number of transitions per training mini-batch       |
+
+**Examples**
+
+```python
+import gymnasium as gym
+from samsara_rl.control.function_approximation.batch.deep_q_network.q_network import QNetwork
+from samsara_rl.control.function_approximation.batch.deep_q_network.targets.double_d_target import DoubleDQNTarget
+from samsara_rl.control.function_approximation.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
+
+env = ScaledCartPole(gym.make("CartPole-v1"))
+network = FullyConnected(4, 32, 2)
+
+# Standard DQN
+agent = QNetwork(
+    mdp=env, policy=None, gamma=0.99, q=network, alpha=0.0001,
+    log_dir="logs/dqn", experiment_name="cartpole_dqn",
+)
+agent.evaluate(max_iter=3000)
+
+# Double DQN — swap the target strategy
+agent = QNetwork(
+    mdp=env, policy=None, gamma=0.99, q=network, alpha=0.0001,
+    target=DoubleDQNTarget(),
+    log_dir="logs/double_dqn", experiment_name="cartpole_double_dqn",
+)
+agent.evaluate(max_iter=3000)
+```
+
+For a full walkthrough with TensorBoard logging, decision surface visualization, and hyperparameter tuning, see the [Deep Q-Network tutorial notebook](examples/deep_q_networks/deep_q_tutorial.ipynb).
