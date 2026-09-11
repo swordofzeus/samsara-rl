@@ -4,7 +4,6 @@ import numpy as np
 
 from samsara_rl.agent import Agent
 from samsara_rl.utils.memory.episode import Episode
-from samsara_rl.policy.stochastic_policy import StochasticPolicy
 
 
 class MonteCarlo(Agent):

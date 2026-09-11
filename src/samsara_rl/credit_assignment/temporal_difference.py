@@ -17,9 +17,7 @@ class TemporalDifference(Agent):
         _lambda: float = 0.4,
     ) -> None:
         super().__init__(mdp, alpha=alpha, gamma=gamma)
-        self.eligibility = np.zeros(
-            (self.mdp.observation_space.n, self.mdp.action_space.n)
-        )
+        self.eligibility = np.zeros((self.mdp.observation_space.n, self.mdp.action_space.n))
         self._lambda = _lambda
         self.q = np.zeros((mdp.observation_space.n, mdp.action_space.n))
 
@@ -32,9 +30,7 @@ class TemporalDifference(Agent):
         return result
 
     def post_episode(self, history: Episode) -> None:
-        self.eligibility = np.zeros(
-            (self.mdp.observation_space.n, self.mdp.action_space.n)
-        )
+        self.eligibility = np.zeros((self.mdp.observation_space.n, self.mdp.action_space.n))
 
     def post_visit(self, history: Episode, terminal: bool = False) -> None:
         if history.curr_index < 1:

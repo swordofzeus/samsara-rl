@@ -1,8 +1,8 @@
 from typing import Any
 
 import numpy as np
-from samsara_rl.policy.policy import Policy
 
+from samsara_rl.policy.policy import Policy
 from samsara_rl.utils.policy.policy_utils import sample
 
 
