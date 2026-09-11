@@ -12,7 +12,7 @@ from samsara_rl.control.function_approximation.batch.deep_q_network.q_network im
 )
 
 
-def test_deep_q_network_convergence_grid_world(grid_world_mdp, random_policy, fully_connected_one_hot_network):
+def test_deep_q_network_convergence_grid_world(grid_world_mdp, fully_connected_one_hot_network):
     """Q-Learning with linear one-hot features should learn a reasonable policy on GridWorld.
 
     After sufficient episodes the value of terminal states should remain
@@ -21,7 +21,6 @@ def test_deep_q_network_convergence_grid_world(grid_world_mdp, random_policy, fu
     """
     ql = QNetwork(
         mdp=grid_world_mdp,
-        policy=random_policy,
         gamma=1,
         q=fully_connected_one_hot_network,
         alpha=0.01,

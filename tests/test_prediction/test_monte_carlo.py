@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pytest
 
-from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
+from samsara_rl.prediction.monte_carlo import MonteCarloPolicyEvaluation
 from samsara_rl.utils.memory.episode import Episode
 
 
@@ -59,7 +59,7 @@ def three_step_trajectory():
 
 def test_post_episode_updates_q(grid_world_mdp, random_policy, two_step_trajectory):
     """post_episode should update Q-table entries for visited (S, A) pairs."""
-    mc = MonteCarloPrediction(grid_world_mdp, random_policy, gamma=0.9)
+    mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=0.9)
     mc.post_episode(two_step_trajectory)
     assert mc.q[10, 1] != 0, "Q(10, 1) should be updated"
     assert mc.q[14, 2] != 0, "Q(14, 2) should be updated"
@@ -67,7 +67,7 @@ def test_post_episode_updates_q(grid_world_mdp, random_policy, two_step_trajecto
 
 def test_post_episode_does_not_update_unvisited(grid_world_mdp, random_policy, two_step_trajectory):
     """post_episode should not modify Q values for unvisited (S, A) pairs."""
-    mc = MonteCarloPrediction(grid_world_mdp, random_policy, gamma=0.9)
+    mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=0.9)
     mc.post_episode(two_step_trajectory)
     assert mc.q[5, 0] == 0, "Unvisited Q(5, 0) should remain 0"
     assert mc.q[10, 0] == 0, "Unvisited action Q(10, 0) should remain 0"
@@ -77,11 +77,11 @@ def test_post_episode_handles_duplicate_visits(
     grid_world_mdp, random_policy, four_step_trajectory_with_dupes, four_step_trajectory_no_dupes
 ):
     """Duplicate (S, A) pairs should all contribute updates via np.add.at."""
-    mc = MonteCarloPrediction(grid_world_mdp, random_policy, gamma=0.9)
+    mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=0.9)
     mc.post_episode(four_step_trajectory_with_dupes)
     q_with_dupes = mc.q[10, 1]
 
-    mc2 = MonteCarloPrediction(grid_world_mdp, random_policy, gamma=0.9)
+    mc2 = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=0.9)
     mc2.post_episode(four_step_trajectory_no_dupes)
     q_without_dupes = mc2.q[10, 1]
 
@@ -90,7 +90,7 @@ def test_post_episode_handles_duplicate_visits(
 
 def test_discounted_returns_no_discount(grid_world_mdp, random_policy, three_step_trajectory):
     """With gamma=1, discounted returns should equal simple cumulative sums."""
-    mc = MonteCarloPrediction(grid_world_mdp, random_policy, gamma=1)
+    mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=1)
     returns = mc._discounted_cum_trajectory(three_step_trajectory.past_rewards()[0:-1])
     assert np.isclose(returns[2], -1.0), "Last step return should be its own reward"
     assert np.isclose(returns[1], -2.0), "Second step return should be sum of remaining"
@@ -103,7 +103,7 @@ def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_p
     random.seed(42)
     grid_world_mdp.reset(seed=42)
 
-    mc = MonteCarloPrediction(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9)
+    mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9)
     mc.evaluate(max_iter=15000)
     v = mc.q.mean(axis=1).reshape(4, 4)
 

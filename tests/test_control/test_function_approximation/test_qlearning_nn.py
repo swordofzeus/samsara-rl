@@ -18,7 +18,7 @@ def test_qlearning_nn_convergence_grid_world(grid_world_mdp, random_policy, line
     step costs -1).
     """
     nn_agent = TemporalDifferenceGradient(
-        grid_world_mdp, random_policy, q=linear_q_torch, gamma=0.999, alpha=0.01, auto_grad=True, _lambda=0
+        grid_world_mdp, q=linear_q_torch, gamma=0.999, alpha=0.01, auto_grad=True, _lambda=0
     )
     nn_agent.evaluate(max_iter=20000)
 

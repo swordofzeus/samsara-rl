@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from samsara_rl.prediction.td import TemporalDifference
+from samsara_rl.prediction.td import TDPolicyEvaluation
 from samsara_rl.utils.memory.episode import Episode
 
 
@@ -34,7 +34,7 @@ def three_step_history(two_step_history):
 
 def test_post_visit_single_step(grid_world_mdp, random_policy):
     """post_visit with a single-step trajectory should be a no-op."""
-    td = TemporalDifference(grid_world_mdp, random_policy)
+    td = TDPolicyEvaluation(grid_world_mdp, random_policy)
     history = Episode(1, 1, 10)
     td.post_visit(history)
     assert np.all(td.q == 0), "Q-table should be unchanged after a single-step trajectory"
@@ -42,14 +42,14 @@ def test_post_visit_single_step(grid_world_mdp, random_policy):
 
 def test_post_visit_updates_q(grid_world_mdp, random_policy, two_step_history):
     """post_visit with a two-step trajectory should update the Q-table."""
-    td = TemporalDifference(grid_world_mdp, random_policy)
+    td = TDPolicyEvaluation(grid_world_mdp, random_policy)
     td.post_visit(two_step_history, False)
     assert td.q[10, 1] != 0, "Q(10, 1) should be updated after post_visit"
 
 
 def test_post_visit_eligibility_decay(grid_world_mdp, random_policy, two_step_history, three_step_history):
     """Eligibility traces should decay by lambda and set visited (S, A) to 1."""
-    td = TemporalDifference(grid_world_mdp, random_policy, _lambda=0.4)
+    td = TDPolicyEvaluation(grid_world_mdp, random_policy, _lambda=0.4)
     td.post_visit(two_step_history)
     assert td.eligibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
 
@@ -60,7 +60,7 @@ def test_post_visit_eligibility_decay(grid_world_mdp, random_policy, two_step_hi
 
 def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_policy):
     """TD(lambda) should converge close to the true V^pi for a random policy."""
-    td = TemporalDifference(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9, _lambda=0.4)
+    td = TDPolicyEvaluation(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9, _lambda=0.4)
     td.evaluate(max_iter=6000)
     v = td.q.mean(axis=1).reshape(4, 4)
 

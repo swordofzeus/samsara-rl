@@ -141,7 +141,7 @@ Q(s, a) <- Q(s, a) + α (G_t - Q(s, a))
 
 If the same (s, a) pair appears multiple times in an episode, each occurrence triggers an update. Returns are computed in a fully vectorized pass using a cumulative-sum trick that avoids the standard reverse loop over time steps.
 
-**`MonteCarloPrediction(mdp, policy, alpha, gamma)`**
+**`MonteCarloPolicyEvaluation(mdp, policy, alpha, gamma)`**
 
 | Argument | Type    | Default | Description                              |
 |----------|---------|---------|------------------------------------------|
@@ -166,7 +166,7 @@ Q(s, a) <- Q(s, a) + α δ e(s, a)
 
 Eligibility traces use the replacing variant — on each visit to (s, a), the trace is set to 1 rather than incremented. All traces decay by γλ at each time step. Traces are reset to zero between episodes.
 
-**`TemporalDifference(mdp, policy, alpha, gamma, _lambda)`**
+**`TDPolicyEvaluation(mdp, policy, alpha, gamma, _lambda)`**
 
 | Argument  | Type    | Default | Description                                    |
 |-----------|---------|---------|------------------------------------------------|
@@ -186,17 +186,17 @@ Eligibility traces use the replacing variant — on each visit to (s, a), the tr
 
 ```python
 from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
-from samsara_rl.prediction.monte_carlo import MonteCarloPrediction
-from samsara_rl.prediction.td import TemporalDifference
+from samsara_rl.prediction.monte_carlo import MonteCarloPolicyEvaluation
+from samsara_rl.prediction.td import TDPolicyEvaluation
 from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
 mdp = GridWorldMDP()
 policy = init_uniform_random(mdp)
 
-mc = MonteCarloPrediction(mdp, policy, alpha=0.01, gamma=0.9)
+mc = MonteCarloPolicyEvaluation(mdp, policy, alpha=0.01, gamma=0.9)
 mc.evaluate(max_iter=10000)
 
-td = TemporalDifference(mdp, policy, alpha=0.01, gamma=0.9, _lambda=0.4)
+td = TDPolicyEvaluation(mdp, policy, alpha=0.01, gamma=0.9, _lambda=0.4)
 td.evaluate(max_iter=10000)
 
 # V(s) for the random policy (expected value over actions)
@@ -216,12 +216,11 @@ On-policy TD control. Bootstraps from a sampled next action A' drawn from the cu
 
 δ = R + γ Q(S', A') - Q(S, A)
 
-**`Sarsa(mdp, policy, alpha, gamma)`**
+**`Sarsa(mdp, alpha, gamma)`**
 
 | Argument | Type    | Default | Description                              |
 |----------|---------|---------|------------------------------------------|
 | `mdp`    | MDP     |         | MDP instance to sample episodes from     |
-| `policy` | `array` |         | Initial stochastic policy of shape `(S, A)` |
 | `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
 | `gamma`  | `float` | `0.9`   | Discount factor                          |
 
@@ -237,12 +236,11 @@ Off-policy TD control. Bootstraps from the greedy action max_a Q(S', a) regardle
 
 δ = R + γ max_a Q(S', a) - Q(S, A)
 
-**`QLearning(mdp, policy, alpha, gamma)`**
+**`QLearning(mdp, alpha, gamma)`**
 
 | Argument | Type    | Default | Description                              |
 |----------|---------|---------|------------------------------------------|
 | `mdp`    | MDP     |         | MDP instance to sample episodes from     |
-| `policy` | `array` |         | Initial stochastic policy of shape `(S, A)` |
 | `alpha`  | `float` | `0.01`  | Learning rate for incremental Q updates  |
 | `gamma`  | `float` | `0.9`   | Discount factor                          |
 
@@ -255,23 +253,21 @@ Off-policy TD control. Bootstraps from the greedy action max_a Q(S', a) regardle
 **Examples**
 
 ```python
-from samsara_rl.mdp.grid_world.grid_world_mdp import GridWorldMDP
+from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
 from samsara_rl.control.tabular.sarsa import Sarsa
 from samsara_rl.control.tabular.q_learning import QLearning
-from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
 mdp = GridWorldMDP()
-policy = init_uniform_random(mdp)
 
-sarsa = Sarsa(mdp, policy, alpha=0.01, gamma=0.9)
+sarsa = Sarsa(mdp, alpha=0.01, gamma=0.9)
 sarsa.evaluate(max_iter=5000)
 
-ql = QLearning(mdp, policy, alpha=0.01, gamma=0.9)
+ql = QLearning(mdp, alpha=0.01, gamma=0.9)
 ql.evaluate(max_iter=5000)
 
 # Optimal value per state (best action)
-v_sarsa = sarsa.agent.q.max(axis=1).reshape(4, 4)
-v_ql = ql.agent.q.max(axis=1).reshape(4, 4)
+v_sarsa = sarsa.q.max(axis=1).reshape(4, 4)
+v_ql = ql.q.max(axis=1).reshape(4, 4)
 ```
 
 ---
@@ -301,12 +297,11 @@ For discrete environments, a one-hot encoding X(s) gives the linear approximator
 
 The TD target function is configurable — SARSA and Q-Learning are implemented as thin subclasses that fix the target.
 
-**`TemporalDifferenceGradient(mdp, policy, alpha, gamma, q, _lambda)`**
+**`TemporalDifferenceGradient(mdp, alpha, gamma, q, _lambda)`**
 
 | Argument  | Type             | Default  | Description                                    |
 |-----------|------------------|----------|------------------------------------------------|
 | `mdp`     | `gym.Env`        |          | Gymnasium-compatible environment               |
-| `policy`  | `array`          |          | Stochastic policy of shape `(S, A)`            |
 | `alpha`   | `float`          | `0.001`  | Learning rate                                  |
 | `gamma`   | `float`          | `1`      | Discount factor                                |
 | `q`       | `LinearFunction` |          | Function approximator                          |
@@ -331,10 +326,8 @@ import numpy as np
 from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
 from samsara_rl.control.function_approximation.functions.linear import LinearFunction
 from samsara_rl.control.function_approximation.sarsa import SarsaGradient
-from samsara_rl.utils.policy.policy_utils import init_uniform_random
 
 mdp = GridWorldMDP()
-policy = init_uniform_random(mdp)
 
 # One-hot encoding gives tabular-equivalent capacity
 def one_hot(s):
@@ -345,7 +338,7 @@ def one_hot(s):
 q_fn = LinearFunction(16, 4, one_hot)
 
 # SARSA with function approximation
-sarsa = SarsaGradient(mdp=mdp, policy=policy, gamma=0.999, q=q_fn, alpha=0.01)
+sarsa = SarsaGradient(mdp=mdp, gamma=0.999, q=q_fn, alpha=0.01)
 sarsa.evaluate(max_iter=20000)
 
 # Learned value per state
@@ -363,12 +356,11 @@ Deep Q-Networks (DQN) replace the linear function approximator with a neural net
 
 The target computation strategy is configurable. Standard DQN uses the target network for both action selection and evaluation. **Double DQN** decouples these — the online network selects the action, and the target network evaluates it — reducing the maximization bias that causes Q-value overestimation and training instability.
 
-**`QNetwork(mdp, policy, alpha, gamma, q, target, target_update_freq, epsilon, epsilon_decay, loss_fn, batch_size)`**
+**`QNetwork(mdp, alpha, gamma, q, target, target_update_freq, epsilon, epsilon_decay, loss_fn, batch_size)`**
 
 | Argument             | Type         | Default      | Description                                         |
 |----------------------|--------------|--------------|-----------------------------------------------------|
 | `mdp`                | `gym.Env`    |              | Gymnasium-compatible environment                    |
-| `policy`             | `array`      |              | Stochastic policy (can be `None` for DQN)           |
 | `alpha`              | `float`      | `0.001`      | Learning rate for Adam optimizer                    |
 | `gamma`              | `float`      | `1`          | Discount factor                                     |
 | `q`                  | `nn.Module`  |              | Neural network mapping states to Q values           |
@@ -393,14 +385,14 @@ network = FullyConnected(4, 32, 2)
 
 # Standard DQN
 agent = QNetwork(
-    mdp=env, policy=None, gamma=0.99, q=network, alpha=0.0001,
+    mdp=env, gamma=0.99, q=network, alpha=0.0001,
     log_dir="logs/dqn", experiment_name="cartpole_dqn",
 )
 agent.evaluate(max_iter=3000)
 
 # Double DQN — swap the target strategy
 agent = QNetwork(
-    mdp=env, policy=None, gamma=0.99, q=network, alpha=0.0001,
+    mdp=env, gamma=0.99, q=network, alpha=0.0001,
     target=DoubleDQNTarget(),
     log_dir="logs/double_dqn", experiment_name="cartpole_double_dqn",
 )

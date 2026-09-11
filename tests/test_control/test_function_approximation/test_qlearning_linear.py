@@ -19,7 +19,6 @@ def test_qlearning_convergence_grid_world(grid_world_mdp, random_policy, linear_
     """
     ql = QLearningGradient(
         mdp=grid_world_mdp,
-        policy=random_policy,
         gamma=0.999,
         q=linear_q,
         alpha=0.01,

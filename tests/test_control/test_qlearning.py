@@ -28,9 +28,9 @@ def expected_q_learning():
 
 def test_q_learning_convergence(grid_world_mdp, random_policy, expected_q_learning):
     """Q-Learning should converge close to expected Q values for the grid world."""
-    q_learning = QLearning(grid_world_mdp, random_policy, gamma=0.9)
+    q_learning = QLearning(grid_world_mdp, gamma=0.9)
     q_learning.evaluate(max_iter=5000)
-    q = q_learning.agent.q
+    q = q_learning.q
 
     assert np.all(q[0] == 0.0), "Terminal state 0 should have Q=0"
     assert np.all(q[15] == 0.0), "Terminal state 15 should have Q=0"
