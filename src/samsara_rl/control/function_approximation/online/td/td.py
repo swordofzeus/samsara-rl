@@ -11,7 +11,7 @@ from samsara_rl.control.function_approximation.functions.manual.linear import (
 from samsara_rl.control.function_approximation.online.td.td_optimizer import (
     TDOptimizer,
 )
-from samsara_rl.search.epsilon_greedy import EpsilonGreedy
+from samsara_rl.policy.epsilon_greedy import EpsilonGreedy
 from samsara_rl.utils.memory.episode import Episode
 from samsara_rl.utils.target import sarsa_target
 
@@ -26,7 +26,6 @@ class TemporalDifferenceGradient(Agent):
 
     Args:
         mdp: Gymnasium-compatible environment.
-        policy: Stochastic policy array of shape (S, A).
         alpha: Learning rate.
         gamma: Discount factor.
         q: Function approximator (e.g. LinearFunction).
@@ -38,7 +37,6 @@ class TemporalDifferenceGradient(Agent):
     def __init__(
         self,
         mdp: Any,
-        policy: np.ndarray,
         alpha: float = 0.001,
         gamma: float = 1,
         q: LinearFunction | None = None,
@@ -52,7 +50,6 @@ class TemporalDifferenceGradient(Agent):
     ) -> None:
         super().__init__(
             mdp,
-            policy,
             alpha,
             gamma,
             **kwargs,
@@ -60,7 +57,7 @@ class TemporalDifferenceGradient(Agent):
         self.q: LinearFunction = q  # type: ignore[assignment]
         self.td_target = target
         self._lambda: float = _lambda
-        self.search = EpsilonGreedy(epsilon=epsilon, epsilon_decay=epsilon_decay)
+        self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
         self.eligibility_traces: list[np.ndarray] = [np.zeros(p.shape) for p in self.q.parameters()]
         self.auto_grad = auto_grad
         self.td_optimizer = TDOptimizer(
@@ -70,6 +67,9 @@ class TemporalDifferenceGradient(Agent):
             _lambda,
             self.eligibility_traces,
         )
+
+    def select_action(self, state: Any) -> int:
+        return self.search.step(state)
 
     def get_q_values(self, curr_state: Any) -> np.ndarray:
         """Return Q values for all actions from the function approximator."""

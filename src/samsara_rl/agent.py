@@ -3,26 +3,20 @@ from typing import Any
 
 import numpy as np
 
-from samsara_rl.search.sample_policy import SamplePolicy
-from samsara_rl.search.search import Search
 from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.logging.tensor_board import TensorBoardLogger
 from samsara_rl.utils.memory.episode import Episode
 
 
 class Agent(ABC):
-    """Base class for model-free policy evaluation methods.
+    """Base class for model-free reinforcement learning agents.
 
     Provides the episode-generation loop (template method pattern) and
     defines hooks that subclasses override to implement algorithm-specific
     update logic.
 
     Args:
-        mdp: Environment with ``STATE_COUNT``, ``ACTION_COUNT``,
-            ``initial_state()``, ``is_terminal_state()``, and ``step()``
-            methods.
-        policy: Stochastic policy array of shape ``(S, A)`` where each
-            row sums to 1.
+        mdp: Gymnasium-compatible environment.
         alpha: Learning rate for incremental Q updates.
         gamma: Discount factor applied to future rewards.
     """
@@ -30,10 +24,8 @@ class Agent(ABC):
     def __init__(
         self,
         mdp: Any,
-        policy: np.ndarray,
         alpha: float = 0.01,
         gamma: float = 0.9,
-        search: Search | None = None,
         experiment_name: str | None = None,
         log_dir: str | None = None,
         autograd: bool = False,
@@ -41,10 +33,8 @@ class Agent(ABC):
         post_visit_hooks: list[Any] | None = None,
     ) -> None:
         self.mdp = mdp
-        self.policy: np.ndarray = policy
         self.gamma: float = gamma
         self.alpha: float = alpha
-        self.search = search if search else SamplePolicy()
         self.rewards_across_episodes: list[float] = []
         self.curr_episode = 0
         self.tensorboard = (
@@ -91,7 +81,7 @@ class Agent(ABC):
             self.post_visit_hooks.append(hook.on_visit)
 
     @abstractmethod
-    def get_q_values(self, state: Any) -> np.ndarray:
+    def select_action(self, state: Any) -> int:
         pass
 
     def run_episode(self) -> Episode:
@@ -106,24 +96,13 @@ class Agent(ABC):
         """
         curr_state, _ = self.mdp.reset()
         episode_history = Episode.from_gym(self.mdp, curr_state)
-        curr_action = self.search.step(
-            self.policy,
-            curr_state,
-            self.get_q_values(episode_history.current_state()),
-            0,
-        )
-
+        curr_action = self.select_action(curr_state)
         terminated = False
 
         while not terminated:
             next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
 
-            next_action = self.search.step(
-                self.policy,
-                next_state,
-                self.get_q_values(next_state),
-                self.curr_episode,
-            )
+            next_action = self.select_action(next_state)
 
             episode_history.record(curr_action, reward, next_state, next_action)
             curr_state = next_state
@@ -153,15 +132,15 @@ class Agent(ABC):
             if episode % 20 == 0 and self.tensorboard:
                 self.tensorboard.flush()
 
+    def get_metrics(self, trajectory: Episode) -> dict[str, float]:
+        """Return metrics to log. Subclasses call super().get_metrics() and add their own."""
+        return {"Reward": float(np.sum(trajectory.past_rewards()))}
+
     def log_metrics(self, trajectory: Episode, episode_number: int) -> None:
         if self.tensorboard:
-            self.tensorboard.log_metric(
-                epoch=episode_number,
-                metric_name="Reward",
-                value=np.sum(trajectory.past_rewards()),
-            )
-            self.tensorboard.log_metric(
-                epoch=episode_number,
-                metric_name="Epsilon",
-                value=np.sum(getattr(self.search, "epsilon", 0)),
-            )
+            for name, value in self.get_metrics(trajectory).items():
+                self.tensorboard.log_metric(
+                    epoch=episode_number,
+                    metric_name=name,
+                    value=value,
+                )

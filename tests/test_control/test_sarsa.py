@@ -26,11 +26,11 @@ def expected_sarsa_q():
     ])
 
 
-def test_sarsa_convergence(grid_world_mdp, random_policy, expected_sarsa_q):
+def test_sarsa_convergence(grid_world_mdp, expected_sarsa_q):
     """SARSA should converge close to expected Q values for the grid world."""
-    sarsa = Sarsa(grid_world_mdp, random_policy, gamma=0.9)
+    sarsa = Sarsa(grid_world_mdp, gamma=0.9)
     sarsa.evaluate(max_iter=5000)
-    q = sarsa.agent.q
+    q = sarsa.q
 
     assert np.all(q[0] == 0.0), "Terminal state 0 should have Q=0"
     assert np.all(q[15] == 0.0), "Terminal state 15 should have Q=0"
