@@ -70,6 +70,7 @@ class QNetwork(Agent):
         self.td_target_range: list[torch.Tensor] = []
         self.target = target if target else DQNTarget()
         self.batch_size = batch_size
+        self.last_loss: float = 0.0
         self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
 
     def _build_up_replay_buffer(self, episode: Episode, terminal: bool) -> None:
@@ -135,6 +136,12 @@ class QNetwork(Agent):
             history: The complete episode history.
         """
         self.search.decay()
+
+    def get_metrics(self, trajectory: Episode) -> dict[str, float]:
+        metrics = super().get_metrics(trajectory)
+        metrics["Epsilon"] = self.search.epsilon
+        metrics["Loss"] = self.last_loss
+        return metrics
 
     def select_action(self, state: Any) -> int:
         return self.search.step(state)

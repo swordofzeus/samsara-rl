@@ -10,6 +10,11 @@ class QLearning(TemporalDifference):
         super().__init__(mdp, alpha, gamma)
         self.search = EpsilonGreedy(self.get_q_values, epsilon=0.99, epsilon_decay=0.98)
 
+    def get_metrics(self, trajectory: Episode) -> dict[str, float]:
+        metrics = super().get_metrics(trajectory)
+        metrics["Epsilon"] = self.search.epsilon
+        return metrics
+
     def select_action(self, state: Any) -> int:
         return self.search.step(state)
 

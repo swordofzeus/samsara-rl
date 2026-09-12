@@ -132,15 +132,15 @@ class Agent(ABC):
             if episode % 20 == 0 and self.tensorboard:
                 self.tensorboard.flush()
 
+    def get_metrics(self, trajectory: Episode) -> dict[str, float]:
+        """Return metrics to log. Subclasses call super().get_metrics() and add their own."""
+        return {"Reward": float(np.sum(trajectory.past_rewards()))}
+
     def log_metrics(self, trajectory: Episode, episode_number: int) -> None:
         if self.tensorboard:
-            self.tensorboard.log_metric(
-                epoch=episode_number,
-                metric_name="Reward",
-                value=np.sum(trajectory.past_rewards()),
-            )
-            # self.tensorboard.log_metric(
-            #     epoch=episode_number,
-            #     metric_name="Epsilon",
-            #     value=np.sum(getattr(self.search, "epsilon", 0)),
-            # )
+            for name, value in self.get_metrics(trajectory).items():
+                self.tensorboard.log_metric(
+                    epoch=episode_number,
+                    metric_name=name,
+                    value=value,
+                )
