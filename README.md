@@ -25,7 +25,8 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [Linear Semi-Gradient TD(λ)](#semi-gradient-tdλ-control) | Value Approximation | TD(λ) with linear function approximation and eligibility traces | Large/continuous state spaces with known features | Linear capacity; requires manual feature engineering |
 | [DQN](#deep-q-network) | Value Approximation | Neural network Q-function with replay buffer and target network | High-dimensional continuous state spaces | Maximization bias; training instability |
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
-| REINFORCE | Policy Gradient | TODO | TODO | TODO |
+| [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
+| [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
 
 ---
 
@@ -49,6 +50,9 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
    - [SARSA (Function Approximation)](#sarsa-function-approximation)
    - [Q-Learning (Function Approximation)](#q-learning-function-approximation)
 7. [Deep Q-Network](#deep-q-network)
+8. [Policy Gradient](#policy-gradient)
+   - [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient)
+   - [REINFORCE](#reinforce)
 
 ---
 
@@ -400,3 +404,62 @@ agent.evaluate(max_iter=3000)
 ```
 
 For a full walkthrough with TensorBoard logging, decision surface visualization, and hyperparameter tuning, see the [Deep Q-Network tutorial notebook](examples/deep_q_networks/deep_q_tutorial.ipynb).
+
+---
+
+## Policy Gradient
+
+Policy gradient methods learn a parameterized policy directly, rather than deriving it from a value function. The policy network outputs action probabilities via softmax, and gradient ascent maximizes the expected return. Unlike value-based methods (Q-Learning, DQN), policy gradients can naturally represent stochastic policies and scale to continuous action spaces.
+
+### Monte Carlo Policy Gradient
+
+Accumulates policy gradients over a batch of episodes before performing an optimizer step. For each episode, discounted returns are computed for every time step, and the policy gradient loss weights the log-probability of each taken action by its return. An optional running average baseline reduces variance by centering returns around their expected value.
+
+**`MonteCarloPolicyGradient(mdp, alpha, gamma, policy_network, optimizer, batch_size, use_advantage)`**
+
+| Argument         | Type             | Default | Description                                                     |
+|------------------|------------------|---------|-----------------------------------------------------------------|
+| `mdp`            | `gym.Env`        |         | Gymnasium-compatible environment                                |
+| `alpha`          | `float`          |         | Learning rate                                                   |
+| `gamma`          | `float`          |         | Discount factor                                                 |
+| `policy_network` | `nn.Module`      |         | Neural network that maps states to action logits                |
+| `optimizer`      | `Optimizer`      | `Adam`  | Optimizer for the policy network                                |
+| `batch_size`     | `int`            | `1`     | Number of episodes to accumulate gradients over before stepping |
+| `use_advantage`  | `bool`           | `True`  | Subtract a running average baseline to reduce variance          |
+
+### REINFORCE
+
+REINFORCE (Williams, 1992) is a special case of Monte Carlo Policy Gradient where the optimizer steps after every episode (batch_size=1).
+
+**`Reinforce(mdp, alpha, gamma, policy_network, optimizer, use_advantage)`**
+
+Accepts the same arguments as `MonteCarloPolicyGradient`, without `batch_size`.
+
+**Examples**
+
+```python
+import gymnasium as gym
+from samsara_rl.control.function_approximation.batch.monte_carlo_policy_gradient.monte_carlo_policy_gradient import MonteCarloPolicyGradient
+from samsara_rl.control.function_approximation.online.reinforce.reinforce import Reinforce
+from samsara_rl.control.function_approximation.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
+
+env = ScaledCartPole(gym.make("CartPole-v1"))
+network = FullyConnected(4, 32, 2)
+
+# Monte Carlo Policy Gradient with batch of 32 episodes
+agent = MonteCarloPolicyGradient(
+    mdp=env, gamma=0.99, alpha=0.002, policy_network=network, batch_size=32,
+    log_dir="logs/mc_pg", experiment_name="cartpole_mcpg",
+)
+agent.evaluate(max_iter=3000)
+
+# REINFORCE — updates every episode
+agent = Reinforce(
+    mdp=env, gamma=0.99, alpha=0.002, policy_network=network,
+    log_dir="logs/reinforce", experiment_name="cartpole_reinforce",
+)
+agent.evaluate(max_iter=3000)
+```
+
+For a full walkthrough, see the [REINFORCE tutorial notebook](examples/reinforce/Untitled.ipynb).

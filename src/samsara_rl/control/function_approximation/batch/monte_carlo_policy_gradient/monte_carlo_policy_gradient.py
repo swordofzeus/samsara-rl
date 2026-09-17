@@ -66,9 +66,10 @@ class MonteCarloPolicyGradient(Agent):
         Returns:
             Advantage-adjusted rewards.
         """
-        self.running_average = self.running_average + (rewards[0] - self.running_average) / self.episode_count
 
-        return rewards - self.running_average
+        normalized_rewards = rewards - self.running_average
+        self.running_average = self.running_average + (rewards[0] - self.running_average) / self.episode_count
+        return normalized_rewards
 
     def train(self, history: Episode) -> float:
         """Compute the policy gradient loss and accumulate gradients.
@@ -99,7 +100,7 @@ class MonteCarloPolicyGradient(Agent):
         selected_actions = torch.from_numpy(actions).to(torch.long).unsqueeze(1)
         selected_action_values = torch.gather(action_score, dim=1, index=selected_actions).squeeze(1)
 
-        loss = -(discounted_rewards_tensor * selected_action_values).sum()
+        loss = (-1 / self.batch_size) * (discounted_rewards_tensor * selected_action_values).sum()
         loss.backward()
         return loss.item()
 
