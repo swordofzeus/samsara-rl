@@ -67,11 +67,10 @@ class QNetwork(Agent):
         self.loss = loss_fn if loss_fn else torch.nn.MSELoss()
         self.target_update_freq = target_update_freq
         self.target_counter = 0
-        self.td_target_range: list[torch.Tensor] = []
         self.target = target if target else DQNTarget()
         self.batch_size = batch_size
-        self.last_loss: float = 0.0
         self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
+        self.metrics: dict[str, float] = {"epsilon": self.search.epsilon}
 
     def _build_up_replay_buffer(self, episode: Episode, terminal: bool) -> None:
         """Record the latest transition into the replay buffer.
@@ -98,9 +97,12 @@ class QNetwork(Agent):
         selected_actions = A.unsqueeze(1).to(torch.long)
         Q_S = torch.gather(self.q(S), dim=1, index=selected_actions).squeeze(1)
         td_target = R + self.gamma * Q_S_prime
-        self.td_target_range = [torch.min(td_target), torch.max(td_target)]
         mse_loss = self.loss(Q_S, td_target)
-        self.last_loss = mse_loss.item()
+        self.metrics.update({
+            "Loss": mse_loss.item(),
+            "TD Target Min": torch.min(td_target).item(),
+            "TD Target Max": torch.max(td_target).item(),
+        })
         mse_loss.backward()
         self.optimizer.step()
 
@@ -136,12 +138,10 @@ class QNetwork(Agent):
             history: The complete episode history.
         """
         self.search.decay()
+        self.metrics.update({"epsilon": self.search.epsilon})
 
     def get_metrics(self, trajectory: Episode) -> dict[str, float]:
-        metrics = super().get_metrics(trajectory)
-        metrics["Epsilon"] = self.search.epsilon
-        metrics["Loss"] = self.last_loss
-        return metrics
+        return {**super().get_metrics(trajectory), **self.metrics}
 
     def select_action(self, state: Any) -> int:
         return self.search.step(state)

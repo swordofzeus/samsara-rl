@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 
 from samsara_rl.agent import Agent
+from samsara_rl.utils.bellman import discounted_cum_trajectory
 from samsara_rl.utils.memory.episode import Episode
 
 
@@ -37,34 +38,9 @@ class MonteCarlo(Agent):
             history: The complete episode history.
         """
         # Compute discounted rewards from 0..N-1 excluding terminal state
-        discounted_trajectory = self._discounted_cum_trajectory(history.past_rewards()[0:-1])
+        discounted_trajectory = discounted_cum_trajectory(self.gamma, history.past_rewards()[0:-1])
         s = history.past_states()[0:-1].astype(int)
         a = history.past_actions()[0:-1].astype(int)
 
         bellman_error = self.alpha * (discounted_trajectory - self.q[s, a])
         np.add.at(self.q, (s, a), bellman_error)
-
-    def _discounted_cum_trajectory(self, reward: np.ndarray) -> np.ndarray:
-        """Compute discounted returns for every time step, vectorized.
-
-        Avoids the standard O(T) reverse loop by factoring out discount
-        weights from a cumulative sum:
-
-        1. Divide each reward by its positional gamma power to normalize.
-        2. Reverse and cumsum so earlier states accumulate future rewards.
-        3. Multiply back by gamma powers to restore correct discounting.
-
-        Args:
-            reward: Array of shape ``(T,)`` containing rewards.
-
-        Returns:
-            Array of shape ``(T,)`` with the discounted return G_t for
-            each time step.
-        """
-        discount_ratio = self.gamma ** np.arange(0, len(reward))[::-1]
-        reversed_reward = reward
-        reversed_reward = reversed_reward / discount_ratio
-        reversed_reward_cum = reversed_reward[::-1].cumsum()
-        reversed_reward_cum = reversed_reward_cum * discount_ratio[::-1]
-        result: np.ndarray = reversed_reward_cum[::-1]
-        return result

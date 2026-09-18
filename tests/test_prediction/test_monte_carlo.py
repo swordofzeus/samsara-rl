@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from samsara_rl.prediction.monte_carlo import MonteCarloPolicyEvaluation
+from samsara_rl.utils.bellman import discounted_cum_trajectory
 from samsara_rl.utils.memory.episode import Episode
 
 
@@ -74,7 +75,10 @@ def test_post_episode_does_not_update_unvisited(grid_world_mdp, random_policy, t
 
 
 def test_post_episode_handles_duplicate_visits(
-    grid_world_mdp, random_policy, four_step_trajectory_with_dupes, four_step_trajectory_no_dupes
+    grid_world_mdp,
+    random_policy,
+    four_step_trajectory_with_dupes,
+    four_step_trajectory_no_dupes,
 ):
     """Duplicate (S, A) pairs should all contribute updates via np.add.at."""
     mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=0.9)
@@ -91,7 +95,7 @@ def test_post_episode_handles_duplicate_visits(
 def test_discounted_returns_no_discount(grid_world_mdp, random_policy, three_step_trajectory):
     """With gamma=1, discounted returns should equal simple cumulative sums."""
     mc = MonteCarloPolicyEvaluation(grid_world_mdp, random_policy, gamma=1)
-    returns = mc._discounted_cum_trajectory(three_step_trajectory.past_rewards()[0:-1])
+    returns = discounted_cum_trajectory(mc.gamma, three_step_trajectory.past_rewards()[0:-1])
     assert np.isclose(returns[2], -1.0), "Last step return should be its own reward"
     assert np.isclose(returns[1], -2.0), "Second step return should be sum of remaining"
     assert np.isclose(returns[0], -3.0), "First step return should be total sum"
