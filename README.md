@@ -27,6 +27,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
 | [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
 | [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
+| Actor-Critic | Policy Gradient | *Next release* | | |
 
 ---
 
@@ -462,4 +463,4 @@ agent = Reinforce(
 agent.evaluate(max_iter=3000)
 ```
 
-For a full walkthrough, see the [REINFORCE tutorial notebook](examples/reinforce/Untitled.ipynb).
+For a full walkthrough, see the [REINFORCE tutorial notebook](examples/reinforce/reinforce_cart_pole.ipynb).
