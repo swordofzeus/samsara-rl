@@ -1,6 +1,4 @@
 from samsara_rl.agent import Agent
-from typing import Any
-import numpy as np
 from samsara_rl.utils.memory.episode import Episode
 
 

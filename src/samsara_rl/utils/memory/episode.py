@@ -1,6 +1,6 @@
 from __future__ import annotations
-from enum import Enum
 
+from enum import Enum
 from typing import Any
 
 import numpy as np
@@ -15,9 +15,7 @@ class StepType(Enum):
 
 
 class Episode(Memory):
-    def __init__(
-        self, observation_space: int, action_space: int, initial_state: Any
-    ) -> None:
+    def __init__(self, observation_space: int, action_space: int, initial_state: Any) -> None:
         super().__init__(observation_space, action_space)
         self.states[0] = initial_state
 
@@ -28,16 +26,13 @@ class Episode(Memory):
         return Episode(state_space, action_space, s)
 
     @classmethod
-    def from_data(
-        cls, states: np.ndarray, actions: np.ndarray, rewards: np.ndarray
-    ) -> Episode:
+    def from_data(cls, states: np.ndarray, actions: np.ndarray, rewards: np.ndarray) -> Episode:
         history = Episode(1, 1, 1)
         history.states = states
         history.actions = actions
         history.rewards = rewards
         history.curr_index = len(states) - 1
         return history
-
 
     def record(
         self,

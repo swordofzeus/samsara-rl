@@ -42,9 +42,7 @@ class Agent(ABC):
             if (log_dir and experiment_name)
             else None
         )
-        self.post_episode_hooks = (
-            post_episode_hooks if post_episode_hooks is not None else []
-        )
+        self.post_episode_hooks = post_episode_hooks if post_episode_hooks is not None else []
         self.post_visit_hooks = post_visit_hooks if post_visit_hooks is not None else []
         self.action_space = action_output_dim(self.mdp.action_space)
         self.observation_space = state_output_dim(self.mdp.observation_space)
