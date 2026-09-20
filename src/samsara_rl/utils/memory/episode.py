@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 
 from typing import Any
 
@@ -8,8 +9,15 @@ from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.memory.memory import Memory
 
 
+class StepType(Enum):
+    SAR = 1
+    SARSA = 2
+
+
 class Episode(Memory):
-    def __init__(self, observation_space: int, action_space: int, initial_state: Any) -> None:
+    def __init__(
+        self, observation_space: int, action_space: int, initial_state: Any
+    ) -> None:
         super().__init__(observation_space, action_space)
         self.states[0] = initial_state
 
@@ -20,7 +28,9 @@ class Episode(Memory):
         return Episode(state_space, action_space, s)
 
     @classmethod
-    def from_data(cls, states: np.ndarray, actions: np.ndarray, rewards: np.ndarray) -> Episode:
+    def from_data(
+        cls, states: np.ndarray, actions: np.ndarray, rewards: np.ndarray
+    ) -> Episode:
         history = Episode(1, 1, 1)
         history.states = states
         history.actions = actions
@@ -28,10 +38,18 @@ class Episode(Memory):
         history.curr_index = len(states) - 1
         return history
 
-    def record(self, action: Any, reward: float, s_prime: Any, a_prime: Any = None) -> None:
-        self.states[self.curr_index + 1] = s_prime
+
+    def record(
+        self,
+        action: Any,
+        reward: float,
+        s_prime: Any,
+        a_prime: Any = None,
+    ) -> None:
         self.actions[self.curr_index] = action
         self.rewards[self.curr_index] = reward
-        if a_prime:
-            self.actions[self.curr_index + 1] = a_prime
+        self.states[self.curr_index + 1] = s_prime
         self.curr_index += 1
+        self.actions[self.curr_index] = (
+            a_prime if a_prime is not None else self.actions[self.curr_index]
+        )  # explict check of None because 0 can be a valid action and return False

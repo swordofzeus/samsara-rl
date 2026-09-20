@@ -3,10 +3,11 @@
 from typing import Any
 
 from samsara_rl.control.function_approximation.online.td.td import TemporalDifferenceGradient
+from samsara_rl.sarsa_agent import SARSAAgent
 from samsara_rl.utils.target import sarsa_target
 
 
-class SarsaGradient(TemporalDifferenceGradient):
+class SarsaGradient(SARSAAgent, TemporalDifferenceGradient):
     """On-policy SARSA control using semi-gradient TD(lambda).
 
     Inherits the full semi-gradient TD(lambda) update from

@@ -2,10 +2,11 @@ from typing import Any
 
 from samsara_rl.credit_assignment.temporal_difference import TemporalDifference
 from samsara_rl.policy.epsilon_greedy import EpsilonGreedy
+from samsara_rl.sarsa_agent import SARSAAgent
 from samsara_rl.utils.memory.episode import Episode
 
 
-class Sarsa(TemporalDifference):
+class Sarsa(SARSAAgent, TemporalDifference):
     def __init__(self, mdp: Any, alpha: float = 0.01, gamma: float = 0.9):
         super().__init__(mdp, alpha, gamma)
         self.search = EpsilonGreedy(self.get_q_values, epsilon=0.99, epsilon_decay=0.98)
