@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.memory.memory import Memory
+
+
+@dataclass
+class Transition:
+    """A single (S, A, R, S') transition, with optional A' for SARSA."""
+
+    state: Any
+    action: int
+    reward: float
+    next_state: Any
+    next_action: int | None = None
 
 
 class Episode(Memory):
@@ -41,4 +53,23 @@ class Episode(Memory):
         self.curr_index += 1
         self.actions[self.curr_index] = (
             a_prime if a_prime is not None else self.actions[self.curr_index]
-        )  # explict check of None because 0 can be a valid action and return False
+        )  # explicit check of None because 0 can be a valid action and return False
+
+    def last_transition(self, include_next_action: bool = False) -> Transition | None:
+        """Return the most recent (S, A, R, S') transition.
+
+        Args:
+            include_next_action: If True, populate next_action with A'
+                from the current index (used by SARSA).
+
+        Returns:
+            The transition, or None if no transitions have been recorded.
+        """
+        if self.curr_index < 1:
+            return None
+        S = self.past_states()[-2]
+        A = int(self.past_actions()[-2])
+        R = float(self.past_rewards()[-2])
+        S_prime = self.past_states()[-1]
+        A_prime = int(self.past_actions()[-1]) if include_next_action else None
+        return Transition(state=S, action=A, reward=R, next_state=S_prime, next_action=A_prime)

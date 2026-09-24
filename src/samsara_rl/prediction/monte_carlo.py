@@ -31,7 +31,7 @@ class MonteCarloPolicyEvaluation(Agent):
         return self.search.step(state)
 
     def post_episode(self, history: Episode) -> None:
-        self.credit_assignment.update(history)
+        self.credit_assignment.terminal(history)
 
     def get_q_values(self, state: int) -> np.ndarray:
         result: np.ndarray = self.q[state]

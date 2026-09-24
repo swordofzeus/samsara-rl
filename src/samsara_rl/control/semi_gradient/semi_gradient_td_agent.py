@@ -51,12 +51,15 @@ class SemiGradientTDAgent(Agent):
         return result
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
+        transition = history.last_transition()
+        if transition is None:
+            return
         target = self.td_target(history, terminal)
-        self.credit_assignment.update(target, history, terminal)
+        self.credit_assignment.observe(transition, target)
 
     def post_episode(self, history: Episode) -> None:
         """Reset gradients and eligibility traces at the end of each episode."""
-        self.credit_assignment.reset()
+        self.credit_assignment.terminal(history)
         self.search.decay()
 
     def select_action(self, state: Any) -> int:

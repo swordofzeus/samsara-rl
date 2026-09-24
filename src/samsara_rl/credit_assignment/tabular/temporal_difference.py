@@ -3,10 +3,22 @@ from typing import Any
 import numpy as np
 
 from samsara_rl.credit_assignment.credit_assignment import CreditAssignment
-from samsara_rl.utils.memory.episode import Episode
+from samsara_rl.utils.memory.episode import Episode, Transition
 
 
 class TemporalDifference(CreditAssignment):
+    """Tabular TD(lambda) credit assignment with eligibility traces.
+
+    Updates Q values per-step via ``observe`` using the TD error
+    and eligibility traces. Resets traces at episode end via ``terminal``.
+
+    Args:
+        q: Q-table array of shape ``(S, A)``.
+        alpha: Learning rate.
+        gamma: Discount factor.
+        _lambda: Eligibility trace decay rate.
+    """
+
     def __init__(
         self,
         q: Any,
@@ -19,22 +31,22 @@ class TemporalDifference(CreditAssignment):
         self._lambda = _lambda
         self.q = q
 
-    def reset(self, **kwargs: Any) -> None:
-        self.eligibility = np.zeros(self.q.shape)
+    def observe(self, transition: Transition, target: float | None = None) -> None:
+        """Update Q-table from a single transition using TD(lambda).
 
-    def update(self, history: Episode, target: float) -> None:
-        if history.curr_index < 1:
-            return
-        self.eligibility = self.eligibility * self._lambda
-        visited_state = history.past_states()[-2].astype(int)
-        el_action = history.past_actions()[-2].astype(int)
-        self.eligibility[visited_state][el_action.astype(np.int8)] = 1
+        Args:
+            transition: The (S, A, R, S') transition.
+            target: The scalar TD target (e.g. max_a Q(S', a) or Q(S', A')).
+        """
+        self.eligibility *= self._lambda
+        S = int(transition.state)
+        A = int(transition.action)
+        self.eligibility[S][A] = 1
 
-        R_prime = history.past_rewards()[-2]
-
-        S = history.past_states()[-2].astype(int)
-        A = history.past_actions()[-2].astype(np.int8)
-        Q = self.q[S][A]
-
-        td_error = (R_prime + self.gamma * target) - Q
+        assert target is not None
+        td_error = (transition.reward + self.gamma * target) - self.q[S][A]
         self.q += self.alpha * self.eligibility * td_error
+
+    def terminal(self, history: Episode) -> None:
+        """Reset eligibility traces at episode end."""
+        self.eligibility = np.zeros(self.q.shape)

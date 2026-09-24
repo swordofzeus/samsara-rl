@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from samsara_rl.credit_assignment.credit_assignment import CreditAssignment
+from samsara_rl.utils.memory.episode import Episode, Transition
 
 
 class TemporalDifferenceGradient(CreditAssignment):
@@ -34,33 +35,30 @@ class TemporalDifferenceGradient(CreditAssignment):
         self.auto_grad = auto_grad
         self.eligibility_traces: list[np.ndarray] = [np.zeros(p.shape) for p in self.q.parameters()]
 
-    def reset(self, **kwargs: Any) -> None:
-        """Reset eligibility traces and gradients."""
-        self.q.zero_grad()
-        self.eligibility_traces = [np.zeros(p.shape) for p in self.q.parameters()]
-
-    def update(self, target: float, history: Any, terminal: bool) -> None:
-        """Semi-gradient TD(lambda) update after each step.
+    def observe(self, transition: Transition, target: float | None = None) -> None:
+        """Semi-gradient TD(lambda) update from a single transition.
 
         Args:
+            transition: The (S, A, R, S') transition.
             target: The scalar TD target (e.g. max_a Q(S', a) or Q(S', A')).
-            history: The episode history recorded so far.
-            terminal: Whether the episode has terminated.
         """
-        if history.curr_index < 1:
-            return
-
-        S = history.past_states()[-2]
-        A: int = int(history.past_actions()[-2])
-        R: float = history.past_rewards()[-2]
+        S = transition.state
+        A = transition.action
+        R = transition.reward
         Q_S = self.q(S, A)[A] if not self.auto_grad else self.q(S)[A]
         Q_S.backward() if self.auto_grad else self.q.backward(upstream=1)
 
+        assert target is not None
         td_error = (R + self.gamma * target) - Q_S
         self.last_td_error = td_error
         self.update_eligibility_traces(A)
         self.step(td_error)
         self.q.zero_grad()
+
+    def terminal(self, history: Episode) -> None:
+        """Reset eligibility traces and gradients at episode end."""
+        self.q.zero_grad()
+        self.eligibility_traces = [np.zeros(p.shape) for p in self.q.parameters()]
 
     def update_eligibility_traces(self, A: int) -> None:
         """Decay traces by gamma * lambda and accumulate current gradient."""

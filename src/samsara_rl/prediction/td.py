@@ -33,11 +33,14 @@ class TDPolicyEvaluation(Agent):
         return self.search.step(state)
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
+        transition = history.last_transition()
+        if transition is None:
+            return
         target = self.td_target(history)
-        self.credit_assignment.update(history, target)
+        self.credit_assignment.observe(transition, target)
 
     def post_episode(self, history: Episode) -> None:
-        self.credit_assignment.reset()
+        self.credit_assignment.terminal(history)
 
     def get_q_values(self, state: int) -> np.ndarray:
         result: np.ndarray = self.q[state]

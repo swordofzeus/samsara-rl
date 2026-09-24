@@ -1,12 +1,14 @@
-from typing import Any
+from abc import ABC, abstractmethod
+
+from samsara_rl.utils.memory.episode import Episode, Transition
 
 
-class CreditAssignment:
+class CreditAssignment(ABC):
     """Base class for credit assignment methods.
 
     Encapsulates the update rule that adjusts value estimates
-    based on observed transitions. Subclasses implement ``update``
-    for their specific algorithm (e.g. TD, Monte Carlo).
+    based on observed transitions. Subclasses implement ``observe``
+    and ``terminal`` for their specific algorithm (e.g. TD, Monte Carlo).
 
     Args:
         alpha: Learning rate for incremental updates.
@@ -17,10 +19,25 @@ class CreditAssignment:
         self.alpha = alpha
         self.gamma = gamma
 
-    def update(self, *args: Any, **kwargs: Any) -> None:
-        """Update value estimates from a transition or trajectory."""
+    @abstractmethod
+    def observe(self, transition: Transition, target: float | None = None) -> None:
+        """Process a single transition (S, A, R, S').
+
+        Called after each step. TD methods perform their update here.
+        Monte Carlo methods may no-op.
+
+        Args:
+            transition: The most recent (S, A, R, S') transition.
+            target: Optional scalar TD target. Used by TD methods,
+                ignored by Monte Carlo.
+        """
         pass
 
-    def reset(self, **kwargs: Any) -> None:
-        """Reset per-episode state (e.g. eligibility traces)."""
+    @abstractmethod
+    def terminal(self, history: Episode) -> None:
+        """Called at the end of an episode.
+
+        Monte Carlo methods perform their full update here.
+        TD methods reset per-episode state (e.g. eligibility traces).
+        """
         pass

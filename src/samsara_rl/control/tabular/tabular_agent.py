@@ -44,12 +44,15 @@ class TabularAgent(Agent):
     def post_episode(self, history: Episode) -> None:
         """Decay epsilon and reset eligibility traces after each episode."""
         self.search.decay()
-        self.credit_assignment.reset()
+        self.credit_assignment.terminal(history)
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
         """Compute the TD target and update Q via credit assignment."""
+        transition = history.last_transition()
+        if transition is None:
+            return
         target = self.td_target(history)
-        self.credit_assignment.update(history, target)
+        self.credit_assignment.observe(transition, target)
 
     def select_action(self, state: Any) -> int:
         """Select an action using epsilon-greedy exploration."""
