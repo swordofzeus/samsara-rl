@@ -1,20 +1,34 @@
-from samsara_rl.agent import Agent
+"""SARSA control with function approximation."""
+
+from typing import Any
+
+from samsara_rl.control.semi_gradient.semi_gradient_td_agent import SemiGradientTDAgent
 from samsara_rl.utils.memory.episode import Episode
 
 
-class SARSAAgent(Agent):
-    """Agent with a SARSA-style episode loop (S, A, R, S', A').
+class SarsaGradient(SemiGradientTDAgent):
+    """On-policy SARSA control using semi-gradient TD(lambda).
 
-    Overrides ``run_episode`` to select the next action *before*
-    ``post_visit``, so that A' is available in the episode history
-    when the TD target Q(S', A') is computed. This is required for
-    on-policy SARSA algorithms where the bootstrap target depends
-    on the action actually taken under the current policy.
+    Uses Q(S', A') as the TD target, where A' is the action
+    actually taken under the current policy.
 
-    All other agents use the standard loop in ``Agent``, which selects
-    the action *after* ``post_visit`` to ensure it reflects the most
-    recent policy update.
+    Overrides ``run_episode`` with the SARSA loop to select A'
+    before ``post_visit``.
     """
+
+    def __init__(self, mdp: Any, **kwargs: Any) -> None:
+        super().__init__(mdp, **kwargs)
+
+    def td_target(self, history: Episode, terminal: bool) -> float:
+        """Compute TD target: 0 for terminal states, Q(S', A') otherwise."""
+        if terminal:
+            return 0
+        S_prime = history.past_states()[-1]
+        A_prime = int(history.past_actions()[-1])
+        target = self.q(S_prime)[A_prime]
+        if self.auto_grad:
+            target = target.item()
+        return float(target)
 
     def run_episode(self) -> Episode:
         """Generate a complete episode using the SARSA loop.
@@ -31,7 +45,6 @@ class SARSAAgent(Agent):
         terminated = False
 
         while not terminated:
-            curr_state = episode_history.past_states()[-1]
             next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
             next_action = self.select_action(next_state)
             episode_history.record(curr_action, reward, next_state, a_prime=next_action)

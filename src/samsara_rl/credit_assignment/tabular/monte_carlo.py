@@ -2,12 +2,12 @@ from typing import Any
 
 import numpy as np
 
-from samsara_rl.agent import Agent
+from samsara_rl.credit_assignment.credit_assignment import CreditAssignment
 from samsara_rl.utils.bellman import discounted_cum_trajectory
 from samsara_rl.utils.memory.episode import Episode
 
 
-class MonteCarlo(Agent):
+class MonteCarlo(CreditAssignment):
     """Every-visit Monte Carlo credit assignment for updating Q(s, a).
 
     Owns the Q-table and update math. Computes discounted returns
@@ -20,14 +20,11 @@ class MonteCarlo(Agent):
         gamma: Discount factor.
     """
 
-    def __init__(self, mdp: Any, alpha: float = 0.01, gamma: float = 1) -> None:
-        super().__init__(mdp, alpha=alpha, gamma=gamma)
-        self.q = np.zeros((mdp.observation_space.n, mdp.action_space.n))
+    def __init__(self, q: Any, alpha: float = 0.01, gamma: float = 1) -> None:
+        super().__init__(alpha=alpha, gamma=gamma)
+        self.q = q
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
-        return
-
-    def post_episode(self, history: Episode) -> None:
+    def update(self, history: Episode) -> None:
         """Update Q-table from a single episode trajectory.
 
         Uses advanced indexing to apply the constant-alpha MC update

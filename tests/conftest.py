@@ -1,8 +1,16 @@
+import random
+
 import numpy as np
 import pytest
 
 from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
 from samsara_rl.utils.policy.policy_utils import init_uniform_random
+
+
+@pytest.fixture(autouse=True)
+def seed_everything():
+    np.random.seed(42)
+    random.seed(42)
 
 
 @pytest.fixture

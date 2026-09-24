@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from samsara_rl.agent import Agent
-from samsara_rl.control.function_approximation.batch.deep_q_network.targets.td_target import (
+from samsara_rl.control.dqn.targets.td_target import (
     DQNTarget,
 )
 from samsara_rl.policy.epsilon_greedy import EpsilonGreedy

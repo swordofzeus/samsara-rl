@@ -3,7 +3,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from samsara_rl.control.function_approximation.batch.monte_carlo_policy_gradient.monte_carlo_policy_gradient import (
+from samsara_rl.control.policy_gradient.monte_carlo_policy_gradient import (
     MonteCarloPolicyGradient,
 )
 

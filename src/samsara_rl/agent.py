@@ -96,7 +96,6 @@ class Agent(ABC):
         """
         curr_state, _ = self.mdp.reset()
         episode_history = Episode.from_gym(self.mdp, curr_state)
-        # curr_action = self.select_action(curr_state)
         terminated = False
 
         while not terminated:

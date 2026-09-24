@@ -7,7 +7,7 @@ isolates the learning algorithm from approximation error.
 
 import numpy as np
 
-from samsara_rl.control.function_approximation.batch.deep_q_network.q_network import (
+from samsara_rl.control.dqn.q_network import (
     QNetwork,
 )
 
