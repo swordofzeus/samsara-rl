@@ -7,10 +7,10 @@ from samsara_rl.control.actor_critic.value_function_actor_critic import (
 )
 
 
-def test_monte_carlo_policy_gradient_convergence(
+def test_value_function_actor_critic_convergence(
     grid_world_mdp, one_hot_encoding_torch
 ):
-    """MC Gradient should learn a shortest path from state 10 to terminal 15.
+    """ValueFunctionActorCritic should learn a shortest path from state 10 to terminal 15.
 
     Two optimal paths exist: RIGHT then DOWN (states 10->11->15),
     or DOWN then RIGHT (states 10->14->15). The assert checks for either.
