@@ -48,7 +48,8 @@ class TemporalDifferenceGradient(CreditAssignment):
         Q_S = self.q(S, A)[A] if not self.auto_grad else self.q(S)[A]
         Q_S.backward() if self.auto_grad else self.q.backward(upstream=1)
 
-        assert target is not None
+        if target is None:
+            raise TypeError
         td_error = (R + self.gamma * target) - Q_S
         self.last_td_error = td_error
         self.update_eligibility_traces(A)

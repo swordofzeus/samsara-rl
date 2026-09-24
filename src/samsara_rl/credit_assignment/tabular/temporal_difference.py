@@ -43,7 +43,8 @@ class TemporalDifference(CreditAssignment):
         A = int(transition.action)
         self.eligibility[S][A] = 1
 
-        assert target is not None
+        if target is None:
+            raise TypeError
         td_error = (transition.reward + self.gamma * target) - self.q[S][A]
         self.q += self.alpha * self.eligibility * td_error
 
