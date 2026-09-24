@@ -96,17 +96,13 @@ class Agent(ABC):
         """
         curr_state, _ = self.mdp.reset()
         episode_history = Episode.from_gym(self.mdp, curr_state)
-        curr_action = self.select_action(curr_state)
         terminated = False
 
         while not terminated:
+            curr_action = self.select_action(curr_state)
             next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
-
-            next_action = self.select_action(next_state)
-
-            episode_history.record(curr_action, reward, next_state, next_action)
+            episode_history.record(curr_action, reward, next_state)
             curr_state = next_state
-            curr_action = next_action
 
             terminated = terminated or truncated
             self.post_visit(episode_history, terminated)

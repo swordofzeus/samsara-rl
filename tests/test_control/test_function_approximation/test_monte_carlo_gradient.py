@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from samsara_rl.control.function_approximation.batch.monte_carlo_policy_gradient.monte_carlo_policy_gradient import (
+from samsara_rl.control.policy_gradient.monte_carlo_policy_gradient import (
     MonteCarloPolicyGradient,
 )
 
@@ -19,7 +19,7 @@ def test_monte_carlo_policy_gradient_convergence(grid_world_mdp, fully_connected
         policy_network=fully_connected_one_hot_network,
         batch_size=32,
     )
-    monte_carlo_agent.evaluate(max_iter=5000)
+    monte_carlo_agent.evaluate(max_iter=6000)
     with torch.no_grad():
         action_values = np.array([
             monte_carlo_agent.policy_network(x).log_softmax(dim=0).argmax() for x in range(0, 16)

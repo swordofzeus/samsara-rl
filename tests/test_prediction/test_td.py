@@ -36,33 +36,37 @@ def test_post_visit_single_step(grid_world_mdp, random_policy):
     """post_visit with a single-step trajectory should be a no-op."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy)
     history = Episode(1, 1, 10)
-    td.post_visit(history)
-    assert np.all(td.q == 0), "Q-table should be unchanged after a single-step trajectory"
+    td.post_visit(history, False)
+    assert all(np.all(td.get_q_values(s) == 0) for s in range(16)), (
+        "Q-table should be unchanged after a single-step trajectory"
+    )
 
 
 def test_post_visit_updates_q(grid_world_mdp, random_policy, two_step_history):
     """post_visit with a two-step trajectory should update the Q-table."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy)
     td.post_visit(two_step_history, False)
-    assert td.q[10, 1] != 0, "Q(10, 1) should be updated after post_visit"
+    assert td.get_q_values(10)[1] != 0, "Q(10, 1) should be updated after post_visit"
 
 
 def test_post_visit_eligibility_decay(grid_world_mdp, random_policy, two_step_history, three_step_history):
     """Eligibility traces should decay by lambda and set visited (S, A) to 1."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy, _lambda=0.4)
-    td.post_visit(two_step_history)
-    assert td.eligibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
+    td.post_visit(two_step_history, False)
+    assert td.credit_assignment.eligibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
 
     td.post_visit(three_step_history, False)
-    assert td.eligibility[14, 2] == 1.0, "Most recent (S, A) eligibility should be 1"
-    assert np.isclose(td.eligibility[10, 1], 0.4), "Previous (S, A) eligibility should decay by lambda"
+    assert td.credit_assignment.eligibility[14, 2] == 1.0, "Most recent (S, A) eligibility should be 1"
+    assert np.isclose(td.credit_assignment.eligibility[10, 1], 0.4), (
+        "Previous (S, A) eligibility should decay by lambda"
+    )
 
 
 def test_evaluate_convergence(grid_world_mdp, random_policy, expected_v_random_policy):
     """TD(lambda) should converge close to the true V^pi for a random policy."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy, alpha=0.01, gamma=0.9, _lambda=0.4)
     td.evaluate(max_iter=6000)
-    v = td.q.mean(axis=1).reshape(4, 4)
+    v = np.array([td.get_q_values(s).mean() for s in range(16)]).reshape(4, 4)
 
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
     assert v[3, 3] == 0.0, "Terminal state (3,3) should be 0"

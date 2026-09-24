@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 import torch
 
-from samsara_rl.control.function_approximation.functions.manual.linear import (
+from samsara_rl.functions.manual.linear import (
     LinearFunction,
 )
-from samsara_rl.control.function_approximation.functions.neural_networks.fully_connected import (
+from samsara_rl.functions.neural_networks.fully_connected import (
     FullyConnected,
 )
-from samsara_rl.control.function_approximation.functions.neural_networks.linear import (
+from samsara_rl.functions.neural_networks.linear import (
     LinearNetwork,
 )
 

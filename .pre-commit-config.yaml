@@ -9,13 +9,13 @@ repos:
       - id: check-json
         exclude: ^.devcontainer/devcontainer.json
       - id: pretty-format-json
-        exclude: ^.devcontainer/devcontainer.json
+        exclude: (^.devcontainer/devcontainer.json|\.ipynb$)
         args: [--autofix, --no-sort-keys]
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.15.7"
+    rev: "v0.15.12"
     hooks:
       - id: ruff-check
         args: [--exit-non-zero-on-fix]

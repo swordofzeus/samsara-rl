@@ -1,18 +1,34 @@
+"""SARSA control with function approximation."""
+
 from typing import Any
 
-from samsara_rl.control.tabular.tabular_agent import TabularAgent
+from samsara_rl.control.semi_gradient.semi_gradient_td_agent import SemiGradientTDAgent
 from samsara_rl.utils.memory.episode import Episode
 
 
-class Sarsa(TabularAgent):
-    def __init__(self, mdp: Any, **kwargs: Any):
+class SarsaGradient(SemiGradientTDAgent):
+    """On-policy SARSA control using semi-gradient TD(lambda).
+
+    Uses Q(S', A') as the TD target, where A' is the action
+    actually taken under the current policy.
+
+    Overrides ``run_episode`` with the SARSA loop to select A'
+    before ``post_visit``.
+    """
+
+    def __init__(self, mdp: Any, **kwargs: Any) -> None:
         super().__init__(mdp, **kwargs)
 
-    def td_target(self, history: Episode) -> float:
-        state = history.past_states()[-1].astype(int)
-        A_prime = history.past_actions()[-1].astype(int)
-        result: float = self.q[state][A_prime]
-        return result
+    def td_target(self, history: Episode, terminal: bool) -> float:
+        """Compute TD target: 0 for terminal states, Q(S', A') otherwise."""
+        if terminal:
+            return 0
+        S_prime = history.past_states()[-1]
+        A_prime = int(history.past_actions()[-1])
+        target = self.q(S_prime)[A_prime]
+        if self.auto_grad:
+            target = target.item()
+        return float(target)
 
     def run_episode(self) -> Episode:
         """Generate a complete episode using the SARSA loop.
