@@ -30,8 +30,7 @@ def test_value_function_actor_critic_convergence(grid_world_mdp, one_hot_encodin
         action_values = np.array([
             value_fn_actor_critic.policy_network(x).log_softmax(dim=0).argmax() for x in range(0, 16)
         ]).reshape(4, 4)
-        print(action_values)
 
-        # assert np.array_equal(action_values[2, 2:], np.array([3, 1])) or np.array_equal(
-        #     action_values[2:, 2], np.array([1, 3])
-        # )
+        assert np.array_equal(action_values[2, 2:], np.array([3, 1])) or np.array_equal(
+            action_values[2:, 2], np.array([1, 3])
+        )
