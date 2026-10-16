@@ -26,7 +26,6 @@ class ValueFunctionActorCritic(Agent):
         policy_optimizer: Any = None,
         value_network: Any = None,
         value_optimizer: Any = None,
-        normalize_advantage: bool = False,
     ) -> None:
         super().__init__(
             mdp,
