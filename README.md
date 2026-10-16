@@ -27,7 +27,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
 | [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
 | [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
-| Actor-Critic | Policy Gradient | *Next release* | | |
+| [Actor-Critic](#actor-critic) | Policy Gradient | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
 
 ---
 
@@ -54,6 +54,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 8. [Policy Gradient](#policy-gradient)
    - [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient)
    - [REINFORCE](#reinforce)
+9. [Actor-Critic](#actor-critic)
 
 ---
 
@@ -464,3 +465,70 @@ agent.evaluate(max_iter=3000)
 ```
 
 For a full walkthrough, see the [REINFORCE tutorial notebook](examples/reinforce/reinforce_cart_pole.ipynb).
+
+---
+
+## Actor-Critic
+
+Actor-Critic methods maintain two separate function approximators that work together:
+
+- **Actor (Policy Network)** — outputs a probability distribution over actions given a state, parameterized as π(a|s; θ). Actions are sampled from this distribution during training.
+- **Critic (Value Network)** — estimates the state value V(s; w). Used to compute the advantage signal that guides policy updates.
+
+On each episode, the critic computes TD targets and updates toward them via MSE loss:
+
+**TD Target**: δ = R + γ V(S'; w)
+
+**Critic Loss**: L_critic = (V(S; w) - δ)²
+
+The advantage estimate tells the actor whether an action was better or worse than expected:
+
+**Advantage**: A(S) = R + γ V(S'; w) - V(S; w)
+
+The actor is updated using the policy gradient, scaled by the advantage:
+
+**Policy Loss**: L_actor = -log(π(a|s; θ)) · A(S)
+
+Positive advantage reinforces the action (makes it more likely), negative advantage discourages it. The negative sign converts gradient ascent into gradient descent for the optimizer.
+
+V(S') must be **detached** from the computation graph when computing the TD target. Otherwise gradients flow through both V(S) and V(S'), causing the critic to push V(S) toward the target AND push V(S') away from it simultaneously. The advantage must also be detached before computing the policy loss — it is a fixed signal for the actor, not something to differentiate through.
+
+**`ValueFunctionActorCritic(mdp, alpha, gamma, policy_network, value_network, policy_optimizer, value_optimizer, batch_size)`**
+
+| Argument           | Type        | Default | Description                                                     |
+|--------------------|-------------|---------|-----------------------------------------------------------------|
+| `mdp`              | `gym.Env`   |         | Gymnasium-compatible environment                                |
+| `alpha`            | `float`     | `0.01`  | Learning rate (used as default if no optimizer provided)        |
+| `gamma`            | `float`     | `0.9`   | Discount factor                                                 |
+| `policy_network`   | `nn.Module` |         | Neural network that maps states to action logits                |
+| `value_network`    | `nn.Module` |         | Neural network that maps states to a single value estimate      |
+| `policy_optimizer` | `Optimizer` | `Adam`  | Optimizer for the policy network                                |
+| `value_optimizer`  | `Optimizer` | `Adam`  | Optimizer for the value network                                 |
+| `batch_size`       | `int`       | `32`    | Number of episodes to accumulate gradients over before stepping |
+
+The critic learning rate should be faster than the actor (1.5–3x) so the critic can provide accurate advantage estimates before the policy shifts too far.
+
+**Examples**
+
+```python
+import gymnasium as gym
+import torch
+from samsara_rl.control.actor_critic.value_function_actor_critic import ValueFunctionActorCritic
+from samsara_rl.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
+
+env = ScaledCartPole(gym.make("CartPole-v1"))
+value_network = FullyConnected(4, 32, 1)
+policy_network = FullyConnected(4, 32, 2)
+
+agent = ValueFunctionActorCritic(
+    mdp=env, gamma=0.9, alpha=0.025, batch_size=32,
+    value_network=value_network, policy_network=policy_network,
+    value_optimizer=torch.optim.Adam(value_network.parameters(), lr=0.025 * 1.75),
+    policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=0.025),
+    log_dir="logs/actor_critic", experiment_name="cartpole_ac",
+)
+agent.evaluate(max_iter=3000)
+```
+
+For a full walkthrough with learning phase analysis and value surface visualization, see the [Actor-Critic tutorial notebook](examples/actor_critic/actor_critic.ipynb).
