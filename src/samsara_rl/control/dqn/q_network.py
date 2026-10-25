@@ -69,7 +69,9 @@ class QNetwork(Agent):
         self.target_counter = 0
         self.target = target if target else DQNTarget()
         self.batch_size = batch_size
-        self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
+        self.search = EpsilonGreedy(
+            self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay
+        )
         self.metrics: dict[str, float] = {"epsilon": self.search.epsilon}
 
     def _build_up_replay_buffer(self, episode: Episode, terminal: bool) -> None:
@@ -87,10 +89,11 @@ class QNetwork(Agent):
             terminal,
         )
 
-    def train(self) -> None:
+    def train(self, replay_buffer=None) -> None:
         """Sample a mini-batch from the replay buffer and perform one gradient step."""
+        replay_buffer = self.replay_buffer if not replay_buffer else replay_buffer
         self.optimizer.zero_grad()
-        S, A, R, S_prime, terminal = self.replay_buffer.sample(self.batch_size)
+        S, A, R, S_prime, terminal = replay_buffer.sample(self.batch_size)
         with torch.no_grad():
             Q_S_prime = self.target(self.q, self.target_network, S_prime, terminal)
 
@@ -98,11 +101,13 @@ class QNetwork(Agent):
         Q_S = torch.gather(self.q(S), dim=1, index=selected_actions).squeeze(1)
         td_target = R + self.gamma * Q_S_prime
         mse_loss = self.loss(Q_S, td_target)
-        self.metrics.update({
-            "Loss": mse_loss.item(),
-            "TD Target Min": torch.min(td_target).item(),
-            "TD Target Max": torch.max(td_target).item(),
-        })
+        self.metrics.update(
+            {
+                "Loss": mse_loss.item(),
+                "TD Target Min": torch.min(td_target).item(),
+                "TD Target Max": torch.max(td_target).item(),
+            }
+        )
         mse_loss.backward()
         self.optimizer.step()
 

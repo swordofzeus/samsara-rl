@@ -27,7 +27,8 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
 | [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
 | [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
-| [Actor-Critic](#actor-critic) | Policy Gradient | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
+| [TD Actor-Critic](#actor-critic) | Actor Critic | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
+| Deep Dyna-Q | Model-Based | *Next release* | *Next release* | *Next release* |
 
 ---
 
