@@ -20,7 +20,7 @@ logger = structlog.get_logger()
 MIN_BUFFER_SIZE = 512
 
 
-class QNetwork(Agent):
+class DQNAgent(Agent):
     """Deep Q-Network agent with experience replay and target network.
 
     Uses a neural network to approximate Q values and trains via
@@ -50,8 +50,14 @@ class QNetwork(Agent):
         target_update_freq: int = 1000,
         epsilon: float = 1,
         epsilon_decay: float = 0.999,
+        epsilon_min: float = 0.05,
+        epsilon_episodes: int | None = None,
+        epsilon_schedule: str = "exponential",
         loss_fn: Callable | None = None,
         batch_size: int = 128,
+        buffer_size: int = 1000,
+        lr_step_size: int | None = None,
+        lr_gamma: float = 0.5,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -61,7 +67,7 @@ class QNetwork(Agent):
             **kwargs,
         )
         self.q: nn.Module = q  # type: ignore[assignment]
-        self.replay_buffer = ReplayBuffer(self.observation_space, self.action_space)
+        self.replay_buffer = ReplayBuffer(self.observation_space, self.action_space, buffer_size)
         self.target_network = copy.deepcopy(self.q)
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=self.alpha)
         self.loss = loss_fn if loss_fn else torch.nn.MSELoss()
@@ -69,7 +75,19 @@ class QNetwork(Agent):
         self.target_counter = 0
         self.target = target if target else DQNTarget()
         self.batch_size = batch_size
-        self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
+        self.lr_scheduler = (
+            torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=lr_step_size, gamma=lr_gamma)
+            if lr_step_size
+            else None
+        )
+        self.epsilon_schedule = epsilon_schedule
+        self.search = EpsilonGreedy(
+            self.get_q_values,
+            epsilon=epsilon,
+            epsilon_decay=epsilon_decay,
+            epsilon_min=epsilon_min,
+            epsilon_episodes=epsilon_episodes,
+        )
         self.metrics: dict[str, float] = {"epsilon": self.search.epsilon}
 
     def _build_up_replay_buffer(self, episode: Episode, terminal: bool) -> None:
@@ -87,10 +105,11 @@ class QNetwork(Agent):
             terminal,
         )
 
-    def train(self) -> None:
+    def train(self, replay_buffer: ReplayBuffer | None = None) -> None:
         """Sample a mini-batch from the replay buffer and perform one gradient step."""
+        replay_buffer = replay_buffer if replay_buffer else self.replay_buffer
         self.optimizer.zero_grad()
-        S, A, R, S_prime, terminal = self.replay_buffer.sample(self.batch_size)
+        S, A, R, S_prime, terminal = replay_buffer.sample(self.batch_size)
         with torch.no_grad():
             Q_S_prime = self.target(self.q, self.target_network, S_prime, terminal)
 
@@ -137,7 +156,10 @@ class QNetwork(Agent):
         Args:
             history: The complete episode history.
         """
-        self.search.decay()
+        self.search.decay(method=self.epsilon_schedule)
+        if self.lr_scheduler:
+            self.lr_scheduler.step()
+            self.metrics["learning_rate"] = self.optimizer.param_groups[0]["lr"]
         self.metrics.update({"epsilon": self.search.epsilon})
 
     def get_metrics(self, trajectory: Episode) -> dict[str, float]:

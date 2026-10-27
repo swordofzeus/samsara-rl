@@ -27,7 +27,9 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
 | [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
 | [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
-| [Actor-Critic](#actor-critic) | Policy Gradient | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
+| [TD Actor-Critic](#actor-critic) | Actor Critic | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
+| [Deep Dyna-Q](#deep-dyna-q) | Dyna (Model-Based + Model-Free) | Learns a world model from real transitions, then generates simulated experience to accelerate Q-network training via Dyna-style planning | Sample-efficient learning; environments where real interactions are expensive | World model errors compound during planning; sensitive to model accuracy |
+| Monte Carlo Tree Search | Forward Search | *Next release* | *Next release* | *Next release* |
 
 ---
 
@@ -51,10 +53,11 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
    - [SARSA (Function Approximation)](#sarsa-function-approximation)
    - [Q-Learning (Function Approximation)](#q-learning-function-approximation)
 7. [Deep Q-Network](#deep-q-network)
-8. [Policy Gradient](#policy-gradient)
+8. [Deep Dyna-Q](#deep-dyna-q)
+9. [Policy Gradient](#policy-gradient)
    - [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient)
    - [REINFORCE](#reinforce)
-9. [Actor-Critic](#actor-critic)
+10. [Actor-Critic](#actor-critic)
 
 ---
 
@@ -362,7 +365,7 @@ Deep Q-Networks (DQN) replace the linear function approximator with a neural net
 
 The target computation strategy is configurable. Standard DQN uses the target network for both action selection and evaluation. **Double DQN** decouples these — the online network selects the action, and the target network evaluates it — reducing the maximization bias that causes Q-value overestimation and training instability.
 
-**`QNetwork(mdp, alpha, gamma, q, target, target_update_freq, epsilon, epsilon_decay, loss_fn, batch_size)`**
+**`DQNAgent(mdp, alpha, gamma, q, target, target_update_freq, epsilon, epsilon_decay, loss_fn, batch_size)`**
 
 | Argument             | Type         | Default      | Description                                         |
 |----------------------|--------------|--------------|-----------------------------------------------------|
@@ -381,7 +384,7 @@ The target computation strategy is configurable. Standard DQN uses the target ne
 
 ```python
 import gymnasium as gym
-from samsara_rl.control.function_approximation.batch.deep_q_network.q_network import QNetwork
+from samsara_rl.control.function_approximation.batch.deep_q_network.q_network import DQNAgent
 from samsara_rl.control.function_approximation.batch.deep_q_network.targets.double_d_target import DoubleDQNTarget
 from samsara_rl.control.function_approximation.functions.neural_networks.fully_connected import FullyConnected
 from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
@@ -390,14 +393,14 @@ env = ScaledCartPole(gym.make("CartPole-v1"))
 network = FullyConnected(4, 32, 2)
 
 # Standard DQN
-agent = QNetwork(
+agent = DQNAgent(
     mdp=env, gamma=0.99, q=network, alpha=0.0001,
     log_dir="logs/dqn", experiment_name="cartpole_dqn",
 )
 agent.evaluate(max_iter=3000)
 
 # Double DQN — swap the target strategy
-agent = QNetwork(
+agent = DQNAgent(
     mdp=env, gamma=0.99, q=network, alpha=0.0001,
     target=DoubleDQNTarget(),
     log_dir="logs/double_dqn", experiment_name="cartpole_double_dqn",
@@ -406,6 +409,84 @@ agent.evaluate(max_iter=3000)
 ```
 
 For a full walkthrough with TensorBoard logging, decision surface visualization, and hyperparameter tuning, see the [Deep Q-Network tutorial notebook](examples/deep_q_networks/deep_q_tutorial.ipynb).
+
+---
+
+## Deep Dyna-Q
+
+Adapted from [Deep Dyna-Q: Integrating Planning for Task-Completion Dialogue Policy Learning](https://arxiv.org/abs/1801.06176) (Peng et al., 2018). The original paper couples the Dyna-Q framework to a dialogue task with domain-specific components. This implementation extracts the core idea — learning a world model from real transitions and using it to generate simulated experience for planning — and generalizes it to work with any Gymnasium environment.
+
+The agent extends DQN with three additional components:
+
+1. **World Model** — a neural network trained to predict (next_state, reward, terminal) given (state, action). The `WorldModelInterpreter` abstraction decouples the model's raw output from how it is parsed, allowing the same agent to work with discrete state spaces (GridWorld) and continuous ones (CartPole).
+
+2. **Simulated Experience Buffer** — after the world model is sufficiently trained (controlled by the `warmup` parameter), the agent generates simulated episodes by rolling out the world model from states sampled from the real replay buffer.
+
+3. **Planning Loop** — the Q-network is trained on mini-batches from the simulated buffer, providing additional learning signal beyond real experience. The number of planning steps per real transition is controlled by `model_plan_steps`.
+
+**`DeepDynaQ(mdp, world_model, world_model_interpreter, ...)`**
+
+| Argument                  | Type                    | Default      | Description                                                        |
+|---------------------------|-------------------------|--------------|--------------------------------------------------------------------|
+| `mdp`                     | `gym.Env`               |              | Gymnasium-compatible environment                                   |
+| `world_model`             | `nn.Module`             |              | Neural network predicting (next_state, reward, terminal)           |
+| `world_model_interpreter` | `WorldModelInterpreter` |              | Parses world model output into state, reward, and terminal signals |
+| `alpha`                   | `float`                 | `0.001`      | Learning rate for both Q-network and world model                   |
+| `gamma`                   | `float`                 | `1`          | Discount factor                                                    |
+| `q`                       | `nn.Module`             |              | Q-network mapping states to action values                          |
+| `model_plan_steps`        | `int`                   | `5`          | Q-network training steps on simulated data per real transition     |
+| `model_train_steps`       | `int`                   | `20`         | World model gradient steps per real transition                     |
+| `warmup`                  | `int`                   | `20`         | Episodes before planning begins                                    |
+| `wm_batch_size`           | `int`                   | `32`         | Mini-batch size for world model training                           |
+| `state_loss`              | `Callable`              | `MSELoss`    | Loss for next-state prediction (use `CrossEntropyLoss` for discrete states) |
+
+Inherits all parameters from `DQNAgent` (epsilon, target network, replay buffer, LR scheduling, etc.).
+
+**Examples**
+
+```python
+import gymnasium as gym
+import torch
+from samsara_rl.control.dyna.deep_dyna_q import DeepDynaQ
+from samsara_rl.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.functions.neural_networks.world_model_interpreter import WorldModelInterpreter
+from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
+
+env = ScaledCartPole(gym.make("CartPole-v1"))
+
+# Q-network: 4 observations -> 2 actions
+q_network = FullyConnected(4, 32, 2)
+
+# World model: 4 observations + 2 one-hot action -> 6 outputs (4 next_state + reward + terminal)
+world_model = FullyConnected(6, 32, 6)
+
+# Interpreter for continuous state spaces
+class CartPoleInterpreter(WorldModelInterpreter):
+    def next_state_logits(self, output):
+        return output[:, 0:4]
+    def predicted_next_state(self, output):
+        return output[:, 0:4]
+    def predicted_reward(self, output):
+        return output[:, 4]
+    def predicted_terminal(self, output):
+        return output[:, 5]
+    def parse(self, output):
+        return self.next_state_logits(output), self.predicted_reward(output), self.predicted_terminal(output)
+
+agent = DeepDynaQ(
+    mdp=env, gamma=0.99, alpha=0.0005, q=q_network,
+    world_model=world_model,
+    world_model_interpreter=CartPoleInterpreter(),
+    model_plan_steps=5, model_train_steps=10, warmup=300,
+    state_loss=torch.nn.MSELoss(),
+    epsilon_episodes=800, epsilon_min=0.01,
+    buffer_size=10000, target_update_freq=500,
+    log_dir="logs/dyna_q", experiment_name="cartpole_dyna_q",
+)
+agent.evaluate(max_iter=2000)
+```
+
+For a full walkthrough with Q-surface visualization, world model analysis, and hyperparameter tuning, see the [Deep Dyna-Q tutorial notebook](examples/deep_dyna_q/DeepDynaQTutorial.ipynb).
 
 ---
 

@@ -7,8 +7,8 @@ from samsara_rl.utils.memory.memory import Memory
 
 
 class ReplayBuffer(Memory):
-    def __init__(self, observation_space: int, action_space: int) -> None:
-        super().__init__(observation_space, action_space)
+    def __init__(self, observation_space: int, action_space: int, memory_size: int = 1000) -> None:
+        super().__init__(observation_space, action_space, memory_size)
         self.state_prime = np.zeros(self.states.shape)
         self.is_terminal = np.zeros(self.memory_size, dtype=bool)
         self.random_generator = np.random.default_rng()

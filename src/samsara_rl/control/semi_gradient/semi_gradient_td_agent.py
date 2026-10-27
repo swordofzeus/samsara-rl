@@ -47,7 +47,7 @@ class SemiGradientTDAgent(Agent):
 
     def get_q_values(self, curr_state: Any) -> np.ndarray:
         """Return Q values for all actions from the function approximator."""
-        result: np.ndarray = self.q(curr_state)
+        result: np.ndarray = self.q(curr_state).squeeze()
         return result
 
     def post_visit(self, history: Episode, terminal: bool) -> None:

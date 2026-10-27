@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any
 
 import numpy as np
+import structlog
 
 from samsara_rl.agent import Agent
 from samsara_rl.credit_assignment.tabular.temporal_difference import (
@@ -45,6 +46,9 @@ class TabularAgent(Agent):
         """Decay epsilon and reset eligibility traces after each episode."""
         self.search.decay()
         self.credit_assignment.terminal(history)
+        if self.curr_episode % 100 == 0:
+            v = self.q.max(axis=1).reshape(4, 4)
+            structlog.get_logger().info("q_values", episode=self.curr_episode, V=v)
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
         """Compute the TD target and update Q via credit assignment."""
