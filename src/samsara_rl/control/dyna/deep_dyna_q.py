@@ -1,26 +1,24 @@
 from collections.abc import Callable
-from tkinter import Grid
 from typing import Any
 
-import numpy as np
 import structlog
 import torch
 from torch import nn
 
-logger = structlog.get_logger()
-
-from samsara_rl.control.dqn.q_network import QNetwork
+from samsara_rl.control.dqn.q_network import DQNAgent
 from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
 from samsara_rl.utils.memory.episode import Episode
 from samsara_rl.utils.memory.replay_buffer import ReplayBuffer
 
+logger = structlog.get_logger()
 
-class DeepDynaQ(QNetwork):
+
+class DeepDynaQ(DQNAgent):
     """DQN agent augmented with a learned world model for planning.
 
-    Extends QNetwork with Dyna-style planning: after each real transition,
+    Extends DQNAgent with Dyna-style planning: after each real transition,
     trains a world model on real experience, then generates simulated
     transitions through the world model to further update the Q-network.
     """
@@ -35,16 +33,26 @@ class DeepDynaQ(QNetwork):
         q: nn.Module | None = None,
         target: Any | None = None,
         target_update_freq: int = 1000,
-        count_planning_updates=False,
+        count_planning_updates: bool = False,
         epsilon: float = 1,
         epsilon_decay: float = 0.999,
+        epsilon_min: float = 0.01,
+        epsilon_episodes: int | None = None,
+        epsilon_schedule: str = "linear",
         loss_fn: Callable | None = None,
         state_loss: Callable | None = None,
         batch_size: int = 128,
         model_plan_steps: int = 5,
         sim_refill_rate: int = 7,
         model_train_steps: int = 20,
+        wm_batch_size: int = 32,
+        min_wm_train_steps: int = 2,
+        wm_train_decay: float | None = None,
+        wm_train_decay_freq: int = 60,
         warmup: int = 20,
+        buffer_size: int = 1000,
+        lr_step_size: int | None = None,
+        lr_gamma: float = 0.5,
         preprocess: Callable[..., torch.Tensor] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -57,32 +65,42 @@ class DeepDynaQ(QNetwork):
             target_update_freq,
             epsilon,
             epsilon_decay,
+            epsilon_min,
+            epsilon_episodes,
+            epsilon_schedule,
             loss_fn,
             batch_size,
+            buffer_size,
+            lr_step_size,
+            lr_gamma,
             **kwargs,
         )
         self.world_model = world_model
         self.world_model_interpreter = world_model_interpreter
         self.model_plan_steps = model_plan_steps
-        self.model_train_steps = model_train_steps
+        self.model_train_steps = float(model_train_steps)
+        self.wm_batch_size = wm_batch_size
+        self.min_wm_train_steps = min_wm_train_steps
+        self.wm_train_decay = wm_train_decay
+        self.wm_train_decay_freq = wm_train_decay_freq
         self.warmup = warmup
         self.sim_buffer = ReplayBuffer(self.observation_space, self.action_space)
         self.preprocess = preprocess
-        self.world_model_optimizer = torch.optim.Adam(
-            self.world_model.parameters(), lr=self.alpha
-        )
-        self.state_loss = torch.nn.CrossEntropyLoss() if not state_loss else state_loss
+        self.world_model_optimizer = torch.optim.Adam(self.world_model.parameters(), lr=self.alpha)
+        self.state_loss = state_loss if state_loss else torch.nn.MSELoss()
         self.reward_loss = torch.nn.MSELoss()
         self.terminal_loss = torch.nn.BCEWithLogitsLoss()
-        self.avg_episode_length = 0
+        self.avg_episode_length: float = 0
         self.sim_refill_rate = sim_refill_rate
         self.count_planning_updates = count_planning_updates
+        self._last_wm_loss: float | None = None
 
     def post_episode(self, history: Episode) -> None:
-        self.avg_episode_length = 5  # (
-        #     self.avg_episode_length
-        #     + (history.curr_index - self.avg_episode_length) / self.curr_episode
-        # )
+        self.avg_episode_length = (
+            self.avg_episode_length + (history.curr_index - self.avg_episode_length) / self.curr_episode
+        )
+        if self.wm_train_decay and self.curr_episode % self.wm_train_decay_freq == 0:
+            self.model_train_steps = max(self.min_wm_train_steps, self.model_train_steps * self.wm_train_decay)
         return super().post_episode(history)
 
     def encode_actions(self, actions: torch.Tensor) -> torch.Tensor:
@@ -103,7 +121,7 @@ class DeepDynaQ(QNetwork):
 
         Samples from the replay buffer, feeds (state, action) into the
         world model, and computes three losses:
-        - CrossEntropyLoss for next-state prediction (discrete states)
+        - state_loss for next-state prediction (default MSELoss)
         - MSELoss for reward prediction (continuous scalar)
         - BCEWithLogitsLoss for terminal prediction (binary)
 
@@ -112,9 +130,7 @@ class DeepDynaQ(QNetwork):
         """
         self.world_model_optimizer.zero_grad()
 
-        states, actions, rewards, next_states, is_terminal = self.replay_buffer.sample(
-            32
-        )
+        states, actions, rewards, next_states, is_terminal = self.replay_buffer.sample(self.wm_batch_size)
         if self.preprocess:
             states = self.preprocess(states)
 
@@ -137,7 +153,7 @@ class DeepDynaQ(QNetwork):
 
         total_loss.backward()
         self.world_model_optimizer.step()
-        return total_loss
+        return total_loss  # type: ignore[no-any-return]
 
     def fill_sim_buffer(self) -> None:
         """Generate a simulated episode through the world model.
@@ -147,7 +163,7 @@ class DeepDynaQ(QNetwork):
         model for (next_state, reward, terminal), and stores each
         transition in the sim_buffer.
         """
-        is_terminal = False
+        is_terminal: bool | torch.Tensor = False
         state = self.replay_buffer.sample(1)[0]
         step_count = 0
 
@@ -158,20 +174,16 @@ class DeepDynaQ(QNetwork):
             state_action_input = torch.cat((one_hot_state, one_hot_action), dim=1)
 
             model_output = self.world_model(state_action_input)
-            _, reward, terminal_logits = self.world_model_interpreter.parse(
-                model_output
-            )
+            _, reward, terminal_logits = self.world_model_interpreter.parse(model_output)
             next_state = self.world_model_interpreter.predicted_next_state(model_output)
-            is_terminal = self.world_model_interpreter.is_terminal(
-                terminal_logits
-            ).any()
+            is_terminal = self.world_model_interpreter.is_terminal(terminal_logits).any()
 
             self.sim_buffer.record(
                 state.squeeze(),
                 action,
-                reward.squeeze(),
+                reward.squeeze().item(),
                 next_state.squeeze(),
-                is_terminal.squeeze(),
+                bool(is_terminal.squeeze()),
             )
             step_count += 1
             state = next_state
@@ -184,26 +196,15 @@ class DeepDynaQ(QNetwork):
         simulated episodes through the world model and uses them to
         further update the Q-network.
         """
-        # logger.debug("deep_dyna_q_post_visit", episode=self.curr_episode)
         super().post_visit(history, terminal)
-        if self.replay_buffer.curr_index < self.batch_size:
+        if self.model_plan_steps == 0 or self.replay_buffer.curr_index < self.batch_size:
             return
 
-        world_model_loss = None
-        for _ in range(self.model_train_steps):
+        for _ in range(int(self.model_train_steps)):
             world_model_loss = self.train_world_model()
-
-        if self.curr_episode % 20 == 0:
-            logger.info(
-                "world_model_loss",
-                episode=self.curr_episode,
-                loss=world_model_loss.item(),
-            )
+        self._last_wm_loss = world_model_loss.item()
 
         if self.curr_episode > self.warmup:
-            if self.curr_episode == self.warmup + 1:
-                logger.info("warmup_complete", episode=self.curr_episode)
-
             for _ in range(self.sim_refill_rate):
                 with torch.no_grad():
                     self.fill_sim_buffer()

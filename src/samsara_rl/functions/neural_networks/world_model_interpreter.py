@@ -27,17 +27,15 @@ class WorldModelInterpreter(ABC):
         pass
 
     @abstractmethod
-    def parse(self, output):
+    def parse(self, output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         pass
 
     @abstractmethod
-    def next_state_logits(self, output):
+    def next_state_logits(self, output: torch.Tensor) -> torch.Tensor:
         pass
 
-    def is_terminal(self, terminal_logits, threshold=0.5):
+    def is_terminal(self, terminal_logits: torch.Tensor, threshold: float = 0.5) -> torch.Tensor:
         return torch.where(torch.sigmoid(terminal_logits) > threshold, 1, 0)
 
-    def prepare_state_target(self, next_states):
+    def prepare_state_target(self, next_states: torch.Tensor) -> torch.Tensor:
         return next_states
-
-

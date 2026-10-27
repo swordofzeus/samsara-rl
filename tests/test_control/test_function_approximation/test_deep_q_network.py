@@ -8,7 +8,7 @@ isolates the learning algorithm from approximation error.
 import numpy as np
 
 from samsara_rl.control.dqn.q_network import (
-    QNetwork,
+    DQNAgent,
 )
 
 
@@ -19,7 +19,7 @@ def test_deep_q_network_convergence_grid_world(grid_world_mdp, fully_connected_o
     at zero and non-terminal states should have negative values (every
     step costs -1).
     """
-    ql = QNetwork(
+    ql = DQNAgent(
         mdp=grid_world_mdp,
         gamma=1,
         q=fully_connected_one_hot_network,

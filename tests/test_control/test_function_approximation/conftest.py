@@ -13,6 +13,9 @@ from samsara_rl.functions.neural_networks.fully_connected import (
 from samsara_rl.functions.neural_networks.linear import (
     LinearNetwork,
 )
+from samsara_rl.functions.neural_networks.world_model_interpreter import (
+    WorldModelInterpreter,
+)
 
 
 @pytest.fixture
@@ -40,15 +43,7 @@ def one_hot_encoding_torch():
     """
 
     def X(S: torch.Tensor) -> torch.Tensor:
-        if isinstance(S, int) or S.ndim == 0 or (S.ndim == 1 and S.shape[0] == 1):
-            arr = torch.zeros(16, dtype=torch.float64)
-            arr[int(S)] = 1
-            return arr
-
-        output = torch.zeros((S.shape[0], 16))
-        S_tensor = torch.from_numpy(S).to(torch.int32) if isinstance(S, np.ndarray) else S.to(torch.int32)
-        output.scatter_(1, S_tensor.unsqueeze(1), 1.0)
-        return output.to(torch.float64)
+        return torch.nn.functional.one_hot(torch.tensor(S).long(), num_classes=16).to(torch.float64)
 
     return X
 
@@ -69,3 +64,34 @@ def linear_q_torch(one_hot_encoding_torch):
 def fully_connected_one_hot_network(one_hot_encoding_torch):
     """A PyTorch linear network with one-hot features (16 states, 4 actions)."""
     return FullyConnected(16, 32, 4, preprocess=one_hot_encoding_torch)
+
+
+@pytest.fixture
+def grid_world_model_interpretor():
+    class GridWorldModelInterpreter(WorldModelInterpreter):
+        def __init__(self, grid_count):
+            self.grid_count = grid_count
+
+        def next_state_logits(self, output):
+            return output[:, 0 : self.grid_count]
+
+        def predicted_next_state(self, output):
+            return torch.argmax(output[:, 0 : self.grid_count], dim=1)
+
+        def predicted_reward(self, output):
+            return output[:, self.grid_count]
+
+        def predicted_terminal(self, output):
+            return output[:, self.grid_count + 1]
+
+        def parse(self, output):
+            return (
+                self.next_state_logits(output),
+                self.predicted_reward(output),
+                self.predicted_terminal(output),
+            )
+
+        def prepare_state_target(self, next_states):
+            return next_states.long()
+
+    return GridWorldModelInterpreter(16)
