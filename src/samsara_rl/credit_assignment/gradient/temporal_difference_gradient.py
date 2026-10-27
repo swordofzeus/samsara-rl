@@ -64,8 +64,6 @@ class TemporalDifferenceGradient(CreditAssignment):
     def update_eligibility_traces(self, A: int) -> None:
         """Decay traces by gamma * lambda and accumulate current gradient."""
         for index, param in enumerate(self.q.parameters()):
-            print(param.grad)
-            input()
             curr_trace = self.eligibility_traces[index]
             curr_trace *= self._lambda * self.gamma
             gradient = param.grad.numpy() if self.auto_grad else param.grad

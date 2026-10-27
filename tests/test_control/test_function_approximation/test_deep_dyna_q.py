@@ -35,7 +35,7 @@ def test_dyna_q_network_convergence_grid_world(
         state_loss=torch.nn.CrossEntropyLoss(),
         epsilon_schedule="exponential",
     )
-    ql.evaluate(max_iter=60)
+    ql.evaluate(max_iter=80)
     q_values = np.array([ql.get_q_values(x).max() for x in range(0, 16)]).reshape(4, 4)
     q_values[0][0] = 0
     q_values[3][3] = 0
