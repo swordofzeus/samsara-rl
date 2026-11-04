@@ -18,7 +18,6 @@ class ValueFunctionActorCritic(Agent):
         gamma: float = 0.9,
         experiment_name: str | None = None,
         log_dir: str | None = None,
-        autograd: bool = False,
         post_episode_hooks: list[Any] | None = None,
         post_visit_hooks: list[Any] | None = None,
         batch_size: int = 32,
