@@ -46,7 +46,7 @@ class CartPoleLogger:
         self._log_decision_boundary(agent)
 
     def _log_probe_leaning(self) -> None:
-        q_left = self.get_q(np.array([0.0, 0.0, -0.72, -0.33]))
+        q_left = self.get_q(np.array([0.0, 0.0, -0.72, -0.33], dtype=np.float32))
         self.tb.log_metric(
             epoch=self.episode,
             metric_name="ProbeValue/LeaningLeft/PushLeft",
@@ -59,8 +59,8 @@ class CartPoleLogger:
         )
 
     def _log_probe_leaning_and_falling(self) -> None:
-        q_left_falling = self.get_q(np.array([0, 0, -0.48, -0.33]))
-        q_right_falling = self.get_q(np.array([0, 0, 0.48, 0.33]))
+        q_left_falling = self.get_q(np.array([0, 0, -0.48, -0.33], dtype=np.float32))
+        q_right_falling = self.get_q(np.array([0, 0, 0.48, 0.33], dtype=np.float32))
 
         self.tb.log_metric(
             epoch=self.episode,
@@ -90,8 +90,8 @@ class CartPoleLogger:
         self.tb.log_metric(epoch=self.step_count, metric_name="TD_Target/Max", value=agent.td_target_range[1])
 
     def _log_probe_angle_only(self) -> None:
-        q_right = self.get_q(np.array([0.0, 0.0, 0.72, 0.0]))
-        q_left = self.get_q(np.array([0.0, 0.0, -0.72, 0.0]))
+        q_right = self.get_q(np.array([0.0, 0.0, 0.72, 0.0], dtype=np.float32))
+        q_left = self.get_q(np.array([0.0, 0.0, -0.72, 0.0], dtype=np.float32))
 
         self.tb.log_metric(
             epoch=self.episode,
@@ -115,15 +115,15 @@ class CartPoleLogger:
         )
 
     def _log_q_values(self) -> None:
-        q_centered = self.get_q(np.array([0.0, 0.0, 0.0, 0.0]))
+        q_centered = self.get_q(np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32))
         self.tb.log_metric(epoch=self.episode, metric_name="Q_Centered/PushLeft", value=q_centered[0])
         self.tb.log_metric(epoch=self.episode, metric_name="Q_Centered/PushRight", value=q_centered[1])
 
-        q_left = self.get_q(np.array([0.0, 0.0, -0.72, -0.33]))
+        q_left = self.get_q(np.array([0.0, 0.0, -0.72, -0.33], dtype=np.float32))
         self.tb.log_metric(epoch=self.episode, metric_name="Q_LeaningLeft/PushLeft", value=q_left[0])
         self.tb.log_metric(epoch=self.episode, metric_name="Q_LeaningLeft/PushRight", value=q_left[1])
 
-        q_right = self.get_q(np.array([0.0, 0.0, 0.72, 0.33]))
+        q_right = self.get_q(np.array([0.0, 0.0, 0.72, 0.33], dtype=np.float32))
         self.tb.log_metric(epoch=self.episode, metric_name="Q_LeaningRight/PushLeft", value=q_right[0])
         self.tb.log_metric(epoch=self.episode, metric_name="Q_LeaningRight/PushRight", value=q_right[1])
 
@@ -138,7 +138,7 @@ class CartPoleLogger:
     def _log_probe_convergence(self, agent: "Agent") -> None:
         if not hasattr(agent, "q") or not hasattr(agent, "target_network"):
             return
-        probe = np.array([0, 0, 0.48, 0.33])
+        probe = torch.tensor([0, 0, 0.48, 0.33], dtype=torch.float32)
         with torch.no_grad():
             prediction = agent.q(probe)
             target = agent.target_network(probe)
@@ -179,7 +179,7 @@ class CartPoleLogger:
 
         for i in range(angle_grid.shape[0]):
             for j in range(angle_grid.shape[1]):
-                state = np.array([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]])
+                state = np.array([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]], dtype=np.float32)
                 q_vals = self.get_q(state)
                 q_left[i, j] = q_vals[0]
                 q_right[i, j] = q_vals[1]

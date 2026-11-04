@@ -95,7 +95,7 @@ class MonteCarloPolicyGradient(Agent):
         discounted_rewards = self.advantage(discounted_rewards) if self.use_advantage else discounted_rewards
         discounted_rewards_tensor = torch.from_numpy(discounted_rewards.copy())
 
-        action_values = self.policy_network(states)
+        action_values = self.policy_network(torch.from_numpy(states))
         action_score = F.log_softmax(action_values, dim=1)
         selected_actions = torch.from_numpy(actions).to(torch.long).unsqueeze(1)
         selected_action_values = torch.gather(action_score, dim=1, index=selected_actions).squeeze(1)
@@ -114,7 +114,8 @@ class MonteCarloPolicyGradient(Agent):
             The selected action index.
         """
         with torch.no_grad():
-            action_values = self.policy_network(state)
+            state_tensor = torch.as_tensor(state)
+            action_values = self.policy_network(state_tensor)
             action_score = F.softmax(action_values, dim=0)
             selected_action = torch.multinomial(action_score, num_samples=1, replacement=True)
             return int(selected_action.squeeze().item())

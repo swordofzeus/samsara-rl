@@ -82,6 +82,38 @@ policy = pi.find_optimal_policy()
 
 ---
 
+## Observation Preprocessing
+
+Samsara agents expect observations to be passed directly to the network — there is no built-in preprocessing layer. The environment's output must match the network's expected input shape and dtype.
+
+If the environment's raw observations don't match what the network needs, wrap the environment using Gymnasium's `ObservationWrapper` to transform observations at the boundary. This follows the [CleanRL](https://github.com/vwxyzjn/cleanrl) convention: preprocessing lives in the environment wrapper, not inside the agent or network.
+
+For example, GridWorld emits integer state indices, but a neural network expects float vectors. A one-hot wrapper converts at the boundary:
+
+```python
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+
+class OneHotWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        n = env.observation_space.n
+        self.n = n
+        self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(n,), dtype=np.float32)
+
+    def observation(self, obs):
+        one_hot = np.zeros(self.n, dtype=np.float32)
+        one_hot[obs] = 1.0
+        return one_hot
+
+env = OneHotWrapper(GridWorldMDP())
+```
+
+**Dtype alignment:** PyTorch networks default to `float32`, but NumPy defaults to `float64`. The replay buffer and episode storage infer their dtype from the network, so observations are automatically cast on storage. If you define a network with `dtype=torch.float64`, everything will align to `float64`. For custom networks, ensure the network's parameter dtype matches the observations flowing in — or use `FullyConnected(input_dim, hidden_dim, output_dim, dtype=torch.float32)` to set it explicitly.
+
+---
+
 ## Planning
 
 Planning algorithms assume full knowledge of environment dynamics (transition probabilities and reward function). While not "true RL" — agents never have access to dynamics in practice — planning provides the theoretical foundation all RL algorithms build on.
@@ -384,7 +416,7 @@ The target computation strategy is configurable. Standard DQN uses the target ne
 
 ```python
 import gymnasium as gym
-from samsara_rl.control.function_approximation.batch.deep_q_network.q_network import DQNAgent
+from samsara_rl.control.dqn.dqn_agent import DQNAgent
 from samsara_rl.control.function_approximation.batch.deep_q_network.targets.double_d_target import DoubleDQNTarget
 from samsara_rl.control.function_approximation.functions.neural_networks.fully_connected import FullyConnected
 from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole

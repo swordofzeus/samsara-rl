@@ -13,15 +13,15 @@ if TYPE_CHECKING:
 ANGULAR_VELOCITIES = [-0.5, -0.25, 0, 0.25, 0.5]
 
 PROBE_LOW = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.05, 0, 0.05] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.05, 0, 0.05] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 PROBE_MID = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.15, -0.1, 0.1, 0.15] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.15, -0.1, 0.1, 0.15] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 PROBE_HIGH = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.3, -0.2, 0.2, 0.3] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.3, -0.2, 0.2, 0.3] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 
@@ -80,9 +80,9 @@ class CartPoleLoggerDyna:
                 self.tb.log_metric(epoch=self.episode, metric_name=f"Q_ByDanger/{name}", value=max_q)
 
     def _log_q_action_split(self, agent: "DeepDynaQ") -> None:
-        center = torch.tensor([[0.0, 0.0, 0.0, 0.0]], dtype=torch.float64)
-        left_lean = torch.tensor([[0.0, 0.0, -0.1, 0.0]], dtype=torch.float64)
-        right_lean = torch.tensor([[0.0, 0.0, 0.1, 0.0]], dtype=torch.float64)
+        center = torch.tensor([[0.0, 0.0, 0.0, 0.0]], dtype=torch.float32)
+        left_lean = torch.tensor([[0.0, 0.0, -0.1, 0.0]], dtype=torch.float32)
+        right_lean = torch.tensor([[0.0, 0.0, 0.1, 0.0]], dtype=torch.float32)
 
         with torch.no_grad():
             for name, state in [("Center", center), ("LeftLean", left_lean), ("RightLean", right_lean)]:
@@ -110,7 +110,7 @@ class CartPoleLoggerDyna:
         with torch.no_grad():
             for i in range(angle_grid.shape[0]):
                 for j in range(angle_grid.shape[1]):
-                    state = torch.tensor([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]], dtype=torch.float64)
+                    state = torch.tensor([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]], dtype=torch.float32)
                     q_vals = agent.q(state)
                     max_q[i, j] = q_vals.max().item()
                     best_action[i, j] = q_vals.argmax().item()

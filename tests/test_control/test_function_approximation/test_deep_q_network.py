@@ -7,12 +7,12 @@ isolates the learning algorithm from approximation error.
 
 import numpy as np
 
-from samsara_rl.control.dqn.q_network import (
+from samsara_rl.control.dqn.dqn_agent import (
     DQNAgent,
 )
 
 
-def test_deep_q_network_convergence_grid_world(grid_world_mdp, fully_connected_one_hot_network):
+def test_deep_q_network_convergence_grid_world(grid_world_mdp_one_hot, fully_connected_one_hot_network):
     """Q-Learning with linear one-hot features should learn a reasonable policy on GridWorld.
 
     After sufficient episodes the value of terminal states should remain
@@ -20,13 +20,14 @@ def test_deep_q_network_convergence_grid_world(grid_world_mdp, fully_connected_o
     step costs -1).
     """
     ql = DQNAgent(
-        mdp=grid_world_mdp,
+        mdp=grid_world_mdp_one_hot,
         gamma=1,
         q=fully_connected_one_hot_network,
         alpha=0.01,
     )
     ql.evaluate(max_iter=600)
-    q_values = np.array([ql.get_q_values(x).max() for x in range(0, 16)]).reshape(4, 4)
+    obs = grid_world_mdp_one_hot.observation
+    q_values = np.array([ql.get_q_values(obs(x)).max() for x in range(0, 16)]).reshape(4, 4)
     q_values[0][0] = 0
     q_values[3][3] = 0
     expected_q = np.array([

@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import torch
+
 from samsara_rl.control.semi_gradient.semi_gradient_td_agent import SemiGradientTDAgent
 from samsara_rl.utils.memory.episode import Episode
 
@@ -17,5 +19,8 @@ class QLearningGradient(SemiGradientTDAgent):
 
     def td_target(self, history: Episode, terminal: bool) -> float:
         """Compute TD target: 0 for terminal states, max_a Q(s', a) otherwise."""
-        target = history.past_states()[-1]
-        return 0 if terminal else self.q(target).max().item()
+        last_transition = history.last_transition()  # transitions(start=-1)
+        if last_transition is None:
+            return 0
+        s_prime = torch.tensor(last_transition.next_state)
+        return 0 if terminal else self.q(s_prime).max().item()

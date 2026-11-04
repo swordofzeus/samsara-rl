@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import torch
+
 from samsara_rl.control.semi_gradient.semi_gradient_td_agent import SemiGradientTDAgent
 from samsara_rl.utils.memory.episode import Episode
 
@@ -23,7 +25,7 @@ class SarsaGradient(SemiGradientTDAgent):
         """Compute TD target: 0 for terminal states, Q(S', A') otherwise."""
         if terminal:
             return 0
-        S_prime = history.past_states()[-1]
+        S_prime = torch.tensor(history.past_states()[-1])
         A_prime = int(history.past_actions()[-1])
         target = self.q(S_prime)[A_prime]
         if self.auto_grad:

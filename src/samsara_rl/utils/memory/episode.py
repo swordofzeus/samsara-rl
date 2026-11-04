@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+import torch
 
 from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.memory.memory import Memory
@@ -20,9 +21,20 @@ class Transition:
     next_action: int | None = None
 
 
+@dataclass
+class Transitions:
+    """Tensors (S, A, R, S') transition, with optional A' for SARSA."""
+
+    state: torch.Tensor
+    action: torch.Tensor
+    reward: torch.Tensor
+    next_state: torch.Tensor
+
+
 class Episode(Memory):
     def __init__(self, observation_space: int, action_space: int, initial_state: Any) -> None:
-        super().__init__(observation_space, action_space)
+        dtype = getattr(initial_state, "dtype", None)
+        super().__init__(observation_space, action_space, dtype=dtype)
         self.states[0] = initial_state
 
     @classmethod
@@ -73,3 +85,30 @@ class Episode(Memory):
         S_prime = self.past_states()[-1]
         A_prime = int(self.past_actions()[-1]) if include_next_action else None
         return Transition(state=S, action=A, reward=R, next_state=S_prime, next_action=A_prime)
+
+    def transitions(self, start: int = 0, end: int | None = None) -> Transitions | None:
+        """Return the transitions (S, A, R, S') begining from (start, end).
+        Start index can be negative ex: -2 -> last 2 transitons.
+        End must be positive.
+
+        Args:
+            start: Starting transition index. Supports negative indexing
+                (e.g. -2 returns last 2 transitions). Defaults to 0.
+            end: Ending transition index (exclusive). Must be positive or None.
+                Defaults to None (all transitions from start).
+
+        Returns:
+            Transitions object with aligned (S, A, R, S') tensors,
+            or None if no transitions have been recorded.
+        """
+        if end is not None and end < 0:
+            raise ValueError(f"End index {end} must be greater then 0. Start may be negative")
+        if self.curr_index < 1:
+            return None
+        end = end if end else self.curr_index
+        start = self.curr_index + start if start < 0 else start
+        S = torch.tensor(self.past_states()[start:end])
+        A = torch.tensor(self.past_actions()[start:end])
+        R = torch.tensor(self.past_rewards()[start:end])
+        S_prime = torch.tensor(self.past_states()[start + 1 : end + 1])
+        return Transitions(S, A, R, S_prime)

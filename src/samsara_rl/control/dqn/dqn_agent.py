@@ -11,7 +11,7 @@ from samsara_rl.agent import Agent
 from samsara_rl.control.dqn.targets.td_target import (
     DQNTarget,
 )
-from samsara_rl.policy.epsilon_greedy import EpsilonGreedy
+from samsara_rl.policy.epsilon_greedy import DecaySchedule, EpsilonGreedy
 from samsara_rl.utils.memory.episode import Episode
 from samsara_rl.utils.memory.replay_buffer import ReplayBuffer
 
@@ -52,7 +52,7 @@ class DQNAgent(Agent):
         epsilon_decay: float = 0.999,
         epsilon_min: float = 0.05,
         epsilon_episodes: int | None = None,
-        epsilon_schedule: str = "exponential",
+        epsilon_schedule: DecaySchedule = DecaySchedule.EXPONENTIAL,
         loss_fn: Callable | None = None,
         batch_size: int = 128,
         buffer_size: int = 1000,
@@ -67,7 +67,9 @@ class DQNAgent(Agent):
             **kwargs,
         )
         self.q: nn.Module = q  # type: ignore[assignment]
-        self.replay_buffer = ReplayBuffer(self.observation_space, self.action_space, buffer_size)
+        self.replay_buffer = ReplayBuffer(
+            self.observation_space, self.action_space, buffer_size, dtype=mdp.observation_space.dtype
+        )
         self.target_network = copy.deepcopy(self.q)
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=self.alpha)
         self.loss = loss_fn if loss_fn else torch.nn.MSELoss()
@@ -112,17 +114,17 @@ class DQNAgent(Agent):
         S, A, R, S_prime, terminal = replay_buffer.sample(self.batch_size)
         with torch.no_grad():
             Q_S_prime = self.target(self.q, self.target_network, S_prime, terminal)
-
+            R = R.to(Q_S_prime.dtype)
         selected_actions = A.unsqueeze(1).to(torch.long)
         Q_S = torch.gather(self.q(S), dim=1, index=selected_actions).squeeze(1)
         td_target = R + self.gamma * Q_S_prime
-        mse_loss = self.loss(Q_S, td_target)
+        episode_loss = self.loss(Q_S, td_target)
         self.metrics.update({
-            "Loss": mse_loss.item(),
+            "Loss": episode_loss.item(),
             "TD Target Min": torch.min(td_target).item(),
             "TD Target Max": torch.max(td_target).item(),
         })
-        mse_loss.backward()
+        episode_loss.backward()
         self.optimizer.step()
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
@@ -178,4 +180,5 @@ class DQNAgent(Agent):
             Array of Q values, one per action.
         """
         with torch.no_grad():
-            return np.array(self.q(state).numpy(), dtype=np.float64)
+            state_tensor = torch.as_tensor(state)
+            return np.array(self.q(state_tensor).squeeze().numpy(), dtype=np.float64)
