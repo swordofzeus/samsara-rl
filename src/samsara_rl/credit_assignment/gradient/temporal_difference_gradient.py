@@ -45,6 +45,8 @@ class TemporalDifferenceGradient(CreditAssignment):
         S = transition.state
         A = transition.action
         R = transition.reward
+        if self.auto_grad and isinstance(S, np.ndarray):
+            S = torch.as_tensor(S)
         Q_S = self.q(S, A)[A] if not self.auto_grad else self.q(S).squeeze()[A]
         Q_S.backward() if self.auto_grad else self.q.backward(upstream=1)
 

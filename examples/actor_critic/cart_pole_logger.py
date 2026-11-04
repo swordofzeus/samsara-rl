@@ -18,15 +18,15 @@ if TYPE_CHECKING:
 ANGULAR_VELOCITIES = [-0.5, -0.25, 0, 0.25, 0.5]
 
 PROBE_LOW = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.05, 0, 0.05] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.05, 0, 0.05] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 PROBE_MID = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.15, -0.1, 0.1, 0.15] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.15, -0.1, 0.1, 0.15] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 PROBE_HIGH = torch.tensor(
-    [[0, 0, angle, av] for angle in [-0.3, -0.2, 0.2, 0.3] for av in ANGULAR_VELOCITIES], dtype=torch.float64
+    [[0, 0, angle, av] for angle in [-0.3, -0.2, 0.2, 0.3] for av in ANGULAR_VELOCITIES], dtype=torch.float32
 )
 
 
@@ -121,7 +121,7 @@ class CartPoleLogger:
         self._total_visits = 0
 
     def _log_center_action_distribution(self, agent: "Agent") -> None:
-        center = torch.tensor([0.0, 0.0, 0.0, 0.0], dtype=torch.float64)
+        center = torch.tensor([0.0, 0.0, 0.0, 0.0], dtype=torch.float32)
         with torch.no_grad():
             logits = agent.policy_network(center)
             probs = Categorical(logits=logits).probs
@@ -129,8 +129,8 @@ class CartPoleLogger:
             self.tb.log_metric(epoch=self.episode, metric_name="CenterAction/P_Right", value=probs[1].item())
 
     def _log_advantage_by_action(self, agent: "Agent") -> None:
-        angles = torch.linspace(-0.3, 0.3, 10, dtype=torch.float64)
-        states = torch.stack([torch.tensor([0.0, 0.0, a.item(), 0.0], dtype=torch.float64) for a in angles])
+        angles = torch.linspace(-0.3, 0.3, 10, dtype=torch.float32)
+        states = torch.stack([torch.tensor([0.0, 0.0, a.item(), 0.0], dtype=torch.float32) for a in angles])
         with torch.no_grad():
             v = agent.value_network(states).squeeze()
             logits = agent.policy_network(states)
@@ -156,7 +156,7 @@ class CartPoleLogger:
         with torch.no_grad():
             for i in range(angle_grid.shape[0]):
                 for j in range(angle_grid.shape[1]):
-                    state = torch.tensor([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]], dtype=torch.float64)
+                    state = torch.tensor([0.0, 0.0, angle_grid[i, j], angvel_grid[i, j]], dtype=torch.float32)
                     values[i, j] = agent.value_network(state).item()
 
         fig = plt.figure(figsize=(8, 6))

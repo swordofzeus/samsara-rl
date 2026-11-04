@@ -21,13 +21,18 @@ def expected_v_qlearning_nn():
     ])
 
 
-def test_qlearning_nn_convergence_grid_world(grid_world_mdp, random_policy, linear_q_torch, expected_v_qlearning_nn):
+def test_qlearning_nn_convergence_grid_world(
+    grid_world_mdp_one_hot, random_policy, linear_q_torch, expected_v_qlearning_nn
+):
     """Q-Learning with PyTorch linear one-hot features should learn a reasonable policy on GridWorld."""
-    nn_agent = QLearningGradient(grid_world_mdp, q=linear_q_torch, gamma=0.999, alpha=0.01, auto_grad=True, _lambda=0)
+    nn_agent = QLearningGradient(
+        grid_world_mdp_one_hot, q=linear_q_torch, gamma=0.999, alpha=0.01, auto_grad=True, _lambda=0
+    )
     nn_agent.evaluate(max_iter=20000)
 
     with torch.no_grad():
-        v = np.array([linear_q_torch(torch.tensor(s)).max().item() for s in range(16)]).reshape(4, 4)
+        obs = grid_world_mdp_one_hot.observation
+        v = np.array([nn_agent.q(torch.from_numpy(obs(s))).squeeze().max().item() for s in range(16)]).reshape(4, 4)
 
     assert v[0, 0] == 0.0, "Terminal state (0,0) should be 0"
     assert v[3, 3] == 0.0, "Terminal state (3,3) should be 0"

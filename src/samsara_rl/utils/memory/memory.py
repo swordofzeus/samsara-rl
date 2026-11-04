@@ -4,16 +4,14 @@ import numpy as np
 
 
 class Memory:
-    def __init__(self, observation_space: int, action_space: int, memory_size: int = 1000) -> None:
+    def __init__(self, observation_space: int, action_space: int, memory_size: int = 1000, dtype: Any = None) -> None:
         self.observation_space = observation_space
         self.action_space = action_space
 
         self.states: np.ndarray = (
-            np.zeros((memory_size, observation_space))
+            np.zeros((memory_size, observation_space), dtype=dtype)
             if observation_space > 2
-            else np.zeros(
-                memory_size,
-            )
+            else np.zeros(memory_size, dtype=dtype)
         )
         self.actions: np.ndarray = (
             np.zeros((memory_size, action_space))

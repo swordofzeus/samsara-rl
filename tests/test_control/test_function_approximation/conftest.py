@@ -1,8 +1,11 @@
 """Shared fixtures for function approximation control tests."""
 
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch
+import torch.nn.functional as f
+from gymnasium import spaces
 
 from samsara_rl.functions.manual.linear import (
     LinearFunction,
@@ -16,6 +19,27 @@ from samsara_rl.functions.neural_networks.linear import (
 from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
+
+
+class OneHotWrapper(gym.ObservationWrapper):
+    """Wraps a Discrete observation space into a one-hot Box."""
+
+    def __init__(self, env: gym.Env) -> None:
+        super().__init__(env)
+        n = env.observation_space.n
+        self.n = n
+        self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(n,), dtype=np.float64)
+
+    def observation(self, obs: int) -> np.ndarray:
+        one_hot = np.zeros(self.n, dtype=np.float64)
+        one_hot[obs] = 1.0
+        return one_hot
+
+
+@pytest.fixture
+def grid_world_mdp_one_hot(grid_world_mdp):
+    """GridWorld with one-hot encoded observations for neural network agents."""
+    return OneHotWrapper(grid_world_mdp)
 
 
 @pytest.fixture
@@ -55,15 +79,15 @@ def linear_q(one_hot_encoding):
 
 
 @pytest.fixture
-def linear_q_torch(one_hot_encoding_torch):
-    """A PyTorch linear network with one-hot features (16 states, 4 actions)."""
-    return LinearNetwork(16, 4, False, preprocess=one_hot_encoding_torch)
+def linear_q_torch():
+    """A PyTorch linear network (16 inputs, 4 actions)."""
+    return LinearNetwork(16, 4, False)
 
 
 @pytest.fixture
-def fully_connected_one_hot_network(one_hot_encoding_torch):
-    """A PyTorch linear network with one-hot features (16 states, 4 actions)."""
-    return FullyConnected(16, 32, 4, preprocess=one_hot_encoding_torch)
+def fully_connected_one_hot_network():
+    """A fully connected network (16 inputs, 32 hidden, 4 actions)."""
+    return FullyConnected(16, 32, 4)
 
 
 @pytest.fixture
@@ -76,7 +100,9 @@ def grid_world_model_interpretor():
             return output[:, 0 : self.grid_count]
 
         def predicted_next_state(self, output):
-            return torch.argmax(output[:, 0 : self.grid_count], dim=1)
+            next_state = torch.argmax(output[:, 0 : self.grid_count], dim=1)
+            next_state_one_hot = f.one_hot(next_state, num_classes=16)
+            return next_state_one_hot.to(torch.float64)
 
         def predicted_reward(self, output):
             return output[:, self.grid_count]
@@ -92,6 +118,6 @@ def grid_world_model_interpretor():
             )
 
         def prepare_state_target(self, next_states):
-            return next_states.long()
+            return torch.argmax(next_states, dim=1)
 
     return GridWorldModelInterpreter(16)

@@ -111,6 +111,8 @@ ignore = [
     "E731",
     # Standard pseudo-random generators (fine for RL exploration)
     "S311",
+    # Allow long exception messages inline
+    "TRY003",
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -5,10 +5,11 @@ import structlog
 import torch
 from torch import nn
 
-from samsara_rl.control.dqn.q_network import DQNAgent
+from samsara_rl.control.dqn.dqn_agent import DQNAgent
 from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
+from samsara_rl.policy.epsilon_greedy import DecaySchedule
 from samsara_rl.utils.memory.episode import Episode
 from samsara_rl.utils.memory.replay_buffer import ReplayBuffer
 
@@ -38,7 +39,7 @@ class DeepDynaQ(DQNAgent):
         epsilon_decay: float = 0.999,
         epsilon_min: float = 0.01,
         epsilon_episodes: int | None = None,
-        epsilon_schedule: str = "linear",
+        epsilon_schedule: DecaySchedule = DecaySchedule.LINEAR,
         loss_fn: Callable | None = None,
         state_loss: Callable | None = None,
         batch_size: int = 128,
@@ -53,7 +54,6 @@ class DeepDynaQ(DQNAgent):
         buffer_size: int = 1000,
         lr_step_size: int | None = None,
         lr_gamma: float = 0.5,
-        preprocess: Callable[..., torch.Tensor] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -85,7 +85,6 @@ class DeepDynaQ(DQNAgent):
         self.wm_train_decay_freq = wm_train_decay_freq
         self.warmup = warmup
         self.sim_buffer = ReplayBuffer(self.observation_space, self.action_space)
-        self.preprocess = preprocess
         self.world_model_optimizer = torch.optim.Adam(self.world_model.parameters(), lr=self.alpha)
         self.state_loss = state_loss if state_loss else torch.nn.MSELoss()
         self.reward_loss = torch.nn.MSELoss()
@@ -131,8 +130,6 @@ class DeepDynaQ(DQNAgent):
         self.world_model_optimizer.zero_grad()
 
         states, actions, rewards, next_states, is_terminal = self.replay_buffer.sample(self.wm_batch_size)
-        if self.preprocess:
-            states = self.preprocess(states)
 
         action_encoding = self.encode_actions(actions)
         state_action_input = torch.hstack([states, action_encoding])
@@ -168,7 +165,7 @@ class DeepDynaQ(DQNAgent):
         step_count = 0
 
         while not is_terminal and step_count < self.avg_episode_length:
-            one_hot_state = self.preprocess(state) if self.preprocess else state.clone()
+            one_hot_state = state.clone()
             action = self.search.step(state.squeeze().numpy())
             one_hot_action = self.encode_actions(torch.tensor([action]))
             state_action_input = torch.cat((one_hot_state, one_hot_action), dim=1)

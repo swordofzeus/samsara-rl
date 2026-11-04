@@ -17,5 +17,7 @@ class QLearningGradient(SemiGradientTDAgent):
 
     def td_target(self, history: Episode, terminal: bool) -> float:
         """Compute TD target: 0 for terminal states, max_a Q(s', a) otherwise."""
-        target = history.past_states()[-1]
-        return 0 if terminal else self.q(target).max().item()
+        transitions = history.transitions(start=-1)
+        if transitions is None:
+            return 0
+        return 0 if terminal else self.q(transitions.next_state).max().item()

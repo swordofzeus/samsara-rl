@@ -33,7 +33,6 @@ class ValueFunctionActorCritic(Agent):
             gamma,
             experiment_name,
             log_dir,
-            autograd,
             post_episode_hooks,
             post_visit_hooks,
         )
@@ -41,10 +40,10 @@ class ValueFunctionActorCritic(Agent):
         self.value_network = value_network
         self.loss = torch.nn.MSELoss()
         self.value_optimizer = (
-            torch.optim.Adam(self.value_network.parameters(), lr=0.01) if value_optimizer is None else value_optimizer
+            torch.optim.Adam(self.value_network.parameters(), lr=alpha) if value_optimizer is None else value_optimizer
         )
         self.policy_optimizer = (
-            torch.optim.Adam(self.policy_network.parameters(), lr=0.001)
+            torch.optim.Adam(self.policy_network.parameters(), lr=alpha)
             if policy_optimizer is None
             else policy_optimizer
         )
@@ -53,23 +52,23 @@ class ValueFunctionActorCritic(Agent):
         self.update_policy = True
 
     def post_episode(self, history: Episode) -> None:
-        S = history.past_states()
-        R = torch.from_numpy(history.past_rewards())
-        A = torch.from_numpy(history.past_actions())
-        V_S = self.value_network(S).squeeze()
-        V_S_prime = self.value_network(S[1:]).squeeze()
-        V_S_prime = torch.hstack((V_S_prime, torch.tensor([0]))).detach()
-        td_target = R + self.gamma * V_S_prime
+        transitions = history.transitions()
+        if transitions is None:
+            return
+        V_S = self.value_network(transitions.state).squeeze()
+        V_S_prime = self.value_network(transitions.next_state).squeeze().detach()
+        V_S_prime[-1] = 0  # value of terminal transition is 0 by definition
+        td_target = transitions.reward + self.gamma * V_S_prime
         loss = self.loss(V_S, td_target)
         loss.backward()
 
         if self.update_policy:
             advantage_estimate = td_target.detach() - V_S.detach()
 
-            logits = self.policy_network(S)
-            action_values = Categorical(logits=logits).log_prob(A)
+            logits = self.policy_network(transitions.state)
+            action_values = Categorical(logits=logits).log_prob(transitions.action)
 
-            policy_loss = -(action_values * advantage_estimate).sum()
+            policy_loss = -(action_values * advantage_estimate).mean()
             policy_loss.backward()
 
         if self.curr_episode % self.batch_size == 0:
@@ -91,6 +90,7 @@ class ValueFunctionActorCritic(Agent):
 
     def select_action(self, state: Any) -> int:
         with torch.no_grad():
-            logits = self.policy_network(state)
+            state_tensor = torch.as_tensor(state)
+            logits = self.policy_network(state_tensor)
             action: int = Categorical(logits=logits).sample().item()
             return action
