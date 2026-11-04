@@ -105,10 +105,10 @@ class Episode(Memory):
             raise ValueError(f"End index {end} must be greater then 0. Start may be negative")
         if self.curr_index < 1:
             return None
-        end = end if end else self.curr_index + 1
+        end = end if end else self.curr_index
         start = self.curr_index + start if start < 0 else start
-        S = torch.tensor(self.past_states()[start : end - 1])
-        A = torch.tensor(self.past_actions()[start : end - 1])
-        R = torch.tensor(self.past_rewards()[start : end - 1])
-        S_prime = torch.tensor(self.past_states()[start + 1 : end])
+        S = torch.tensor(self.past_states()[start:end])
+        A = torch.tensor(self.past_actions()[start:end])
+        R = torch.tensor(self.past_rewards()[start:end])
+        S_prime = torch.tensor(self.past_states()[start + 1 : end + 1])
         return Transitions(S, A, R, S_prime)

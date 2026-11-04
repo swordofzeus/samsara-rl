@@ -5,16 +5,13 @@ import torch
 
 from samsara_rl.utils.memory.memory import Memory
 
-TORCH_TO_NUMPY_DTYPE = {torch.float32: np.float32, torch.float64: np.float64}
-
 
 class ReplayBuffer(Memory):
     def __init__(
-        self, observation_space: int, action_space: int, memory_size: int = 1000, dtype: torch.dtype | None = None
+        self, observation_space: int, action_space: int, memory_size: int = 1000, dtype: np.dtype | None = None
     ) -> None:
-        numpy_dtype = TORCH_TO_NUMPY_DTYPE.get(dtype) if dtype else None
-        super().__init__(observation_space, action_space, memory_size, dtype=numpy_dtype)
-        self.state_prime = np.zeros(self.states.shape, dtype=numpy_dtype)
+        super().__init__(observation_space, action_space, memory_size, dtype=dtype)
+        self.state_prime = np.zeros(self.states.shape, dtype=dtype)
         self.is_terminal = np.zeros(self.memory_size, dtype=bool)
         self.random_generator = np.random.default_rng()
 

@@ -48,7 +48,7 @@ class SemiGradientTDAgent(Agent):
 
     def get_q_values(self, curr_state: Any) -> np.ndarray:
         """Return Q values for all actions from the function approximator."""
-        if isinstance(curr_state, np.ndarray):
+        if self.auto_grad and isinstance(curr_state, np.ndarray):
             curr_state = torch.as_tensor(curr_state)
         result: np.ndarray = self.q(curr_state).squeeze()
         return result

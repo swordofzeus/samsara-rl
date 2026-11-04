@@ -2,6 +2,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import torch
 
 
 class Node:
@@ -62,6 +63,8 @@ class LinearFunction:
 
     def __call__(self, S: Any, A: int | None = None) -> np.ndarray:
         """Forward pass. Records (S, A) in context if A is provided."""
+        if isinstance(S, torch.Tensor):
+            S = S.numpy()
         if A is not None:
             self.context.append((S, A))
         result: np.ndarray = self.W.data.dot(self.X(S))

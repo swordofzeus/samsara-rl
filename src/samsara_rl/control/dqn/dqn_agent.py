@@ -67,8 +67,9 @@ class DQNAgent(Agent):
             **kwargs,
         )
         self.q: nn.Module = q  # type: ignore[assignment]
-        network_dtype = next(self.q.parameters()).dtype
-        self.replay_buffer = ReplayBuffer(self.observation_space, self.action_space, buffer_size, dtype=network_dtype)
+        self.replay_buffer = ReplayBuffer(
+            self.observation_space, self.action_space, buffer_size, dtype=mdp.observation_space.dtype
+        )
         self.target_network = copy.deepcopy(self.q)
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=self.alpha)
         self.loss = loss_fn if loss_fn else torch.nn.MSELoss()
@@ -113,7 +114,7 @@ class DQNAgent(Agent):
         S, A, R, S_prime, terminal = replay_buffer.sample(self.batch_size)
         with torch.no_grad():
             Q_S_prime = self.target(self.q, self.target_network, S_prime, terminal)
-
+            R = R.to(Q_S_prime.dtype)
         selected_actions = A.unsqueeze(1).to(torch.long)
         Q_S = torch.gather(self.q(S), dim=1, index=selected_actions).squeeze(1)
         td_target = R + self.gamma * Q_S_prime

@@ -84,7 +84,7 @@ class DeepDynaQ(DQNAgent):
         self.wm_train_decay = wm_train_decay
         self.wm_train_decay_freq = wm_train_decay_freq
         self.warmup = warmup
-        self.sim_buffer = ReplayBuffer(self.observation_space, self.action_space)
+        self.sim_buffer = ReplayBuffer(self.observation_space, self.action_space, dtype=mdp.observation_space.dtype)
         self.world_model_optimizer = torch.optim.Adam(self.world_model.parameters(), lr=self.alpha)
         self.state_loss = state_loss if state_loss else torch.nn.MSELoss()
         self.reward_loss = torch.nn.MSELoss()

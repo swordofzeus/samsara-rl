@@ -55,8 +55,8 @@ class ValueFunctionActorCritic(Agent):
         transitions = history.transitions()
         if transitions is None:
             return
-        V_S = self.value_network(transitions.state).squeeze()
-        V_S_prime = self.value_network(transitions.next_state).squeeze().detach()
+        V_S = self.value_network(transitions.state).squeeze(-1)
+        V_S_prime = self.value_network(transitions.next_state).squeeze(-1).detach()
         V_S_prime[-1] = 0  # value of terminal transition is 0 by definition
         td_target = transitions.reward + self.gamma * V_S_prime
         loss = self.loss(V_S, td_target)
