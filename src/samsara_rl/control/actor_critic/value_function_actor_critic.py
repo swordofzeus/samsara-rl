@@ -57,7 +57,8 @@ class ValueFunctionActorCritic(Agent):
         V_S = self.value_network(transitions.state).squeeze(-1)
         V_S_prime = self.value_network(transitions.next_state).squeeze(-1).detach()
         V_S_prime[-1] = 0  # value of terminal transition is 0 by definition
-        td_target = transitions.reward + self.gamma * V_S_prime
+        R = transitions.reward.to(V_S.dtype)
+        td_target = R + self.gamma * V_S_prime
         loss = self.loss(V_S, td_target)
         loss.backward()
 
@@ -67,7 +68,7 @@ class ValueFunctionActorCritic(Agent):
             logits = self.policy_network(transitions.state)
             action_values = Categorical(logits=logits).log_prob(transitions.action)
 
-            policy_loss = -(action_values * advantage_estimate).mean()
+            policy_loss = - (action_values * advantage_estimate).sum() / self.batch_size
             policy_loss.backward()
 
         if self.curr_episode % self.batch_size == 0:

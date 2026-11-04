@@ -143,7 +143,7 @@ class DeepDynaQ(DQNAgent):
             next_state_logits,
             self.world_model_interpreter.prepare_state_target(next_states),
         )
-        reward_loss = self.reward_loss(predicted_reward, rewards)
+        reward_loss = self.reward_loss(predicted_reward, rewards.to(predicted_reward.dtype))
         terminal_loss = self.terminal_loss(predicted_terminal, is_terminal.float())
 
         total_loss = next_state_loss + reward_loss + terminal_loss
