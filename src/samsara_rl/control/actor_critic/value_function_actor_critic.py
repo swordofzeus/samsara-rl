@@ -68,7 +68,7 @@ class ValueFunctionActorCritic(Agent):
             logits = self.policy_network(transitions.state)
             action_values = Categorical(logits=logits).log_prob(transitions.action)
 
-            policy_loss = - (action_values * advantage_estimate).sum() / self.batch_size
+            policy_loss = -(action_values * advantage_estimate).sum() / self.batch_size
             policy_loss.backward()
 
         if self.curr_episode % self.batch_size == 0:
