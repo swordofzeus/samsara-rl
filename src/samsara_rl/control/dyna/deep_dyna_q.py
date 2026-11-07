@@ -166,7 +166,7 @@ class DeepDynaQ(DQNAgent):
 
         while not is_terminal and step_count < self.avg_episode_length:
             one_hot_state = state.clone()
-            action = self.search.step(state.squeeze().numpy())
+            action = self.search(state.squeeze().numpy())
             one_hot_action = self.encode_actions(torch.tensor([action]))
             state_action_input = torch.cat((one_hot_state, one_hot_action), dim=1)
 

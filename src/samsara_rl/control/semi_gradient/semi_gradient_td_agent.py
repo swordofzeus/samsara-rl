@@ -66,4 +66,4 @@ class SemiGradientTDAgent(Agent):
         self.search.decay()
 
     def select_action(self, state: Any) -> int:
-        return self.search.step(state)
+        return self.search(state)

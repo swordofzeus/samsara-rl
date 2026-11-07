@@ -1,5 +1,7 @@
 """Shared fixtures for function approximation control tests."""
 
+from pathlib import Path
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -19,6 +21,8 @@ from samsara_rl.functions.neural_networks.linear import (
 from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
+from samsara_rl.policy.policy import Policy
+from samsara_rl.utils.policy.policy_utils import sample
 
 
 class OneHotWrapper(gym.ObservationWrapper):
@@ -40,6 +44,19 @@ class OneHotWrapper(gym.ObservationWrapper):
 def grid_world_mdp_one_hot(grid_world_mdp):
     """GridWorld with one-hot encoded observations for neural network agents."""
     return OneHotWrapper(grid_world_mdp)
+
+
+@pytest.fixture
+def grid_world_random_policy(grid_world_mdp, random_policy):
+    class GridWorldRandomPolicy(Policy):
+        def __init__(self, policy):
+            self.policy = policy
+
+        def __call__(self, state):
+            state_index = np.argmax(state)
+            return sample(self.policy, state_index)
+
+    return GridWorldRandomPolicy(random_policy)
 
 
 @pytest.fixture
@@ -121,3 +138,10 @@ def grid_world_model_interpretor():
             return torch.argmax(next_states, dim=1)
 
     return GridWorldModelInterpreter(16)
+
+
+@pytest.fixture
+def grid_world_trained_model():
+    model = FullyConnected(20, 32, 18, dtype=torch.float32)
+    model.load_state_dict(torch.load(Path(__file__).parent / "assets" / "grid_world_model.pt"))
+    return model

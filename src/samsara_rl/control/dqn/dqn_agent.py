@@ -168,7 +168,7 @@ class DQNAgent(Agent):
         return {**super().get_metrics(trajectory), **self.metrics}
 
     def select_action(self, state: Any) -> int:
-        return self.search.step(state)
+        return self.search(state)
 
     def get_q_values(self, state: Any) -> np.ndarray:
         """Return Q values for all actions at the given state.
