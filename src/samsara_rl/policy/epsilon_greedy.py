@@ -44,7 +44,7 @@ class EpsilonGreedy(Policy):
             case _:
                 raise ValueError(f"Unsupported decay schedule: {method}")
 
-    def step(self, state: np.ndarray | torch.Tensor) -> int:
+    def __call__(self, state: np.ndarray | torch.Tensor) -> int:
         action_values = self.q_values(state)
         exploit = random.uniform(0, 1) > self.epsilon
         sampled_action = action_values.argmax() if exploit else random.randint(0, action_values.shape[0] - 1)

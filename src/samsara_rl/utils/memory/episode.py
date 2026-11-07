@@ -30,6 +30,14 @@ class Transitions:
     reward: torch.Tensor
     next_state: torch.Tensor
 
+    def as_numpy(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        return (
+            self.state.numpy(),
+            self.action.numpy(),
+            self.reward.numpy(),
+            self.next_state.numpy(),
+        )
+
 
 class Episode(Memory):
     def __init__(self, observation_space: int, action_space: int, initial_state: Any) -> None:

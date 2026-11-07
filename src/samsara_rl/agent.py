@@ -83,6 +83,14 @@ class Agent(ABC):
     def select_action(self, state: Any) -> int:
         pass
 
+    def on_complete(self) -> None:
+        """Called once after all episodes have finished.
+
+        Override to perform cleanup (e.g. saving a model).
+        Default is a no-op.
+        """
+        pass
+
     def run_episode(self) -> Episode:
         """Generate a complete episode under the current policy.
 
@@ -126,6 +134,7 @@ class Agent(ABC):
             self.post_episode(trajectory)
             if episode % 20 == 0 and self.tensorboard:
                 self.tensorboard.flush()
+        self.on_complete()
 
     def get_metrics(self, trajectory: Episode) -> dict[str, float]:
         """Return metrics to log. Subclasses call super().get_metrics() and add their own."""

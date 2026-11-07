@@ -28,7 +28,7 @@ class MonteCarloPolicyEvaluation(Agent):
         self.credit_assignment = MonteCarlo(self.q, alpha, gamma)
 
     def select_action(self, state: Any) -> int:
-        return self.search.step(state)
+        return self.search(state)
 
     def post_episode(self, history: Episode) -> None:
         self.credit_assignment.terminal(history)
