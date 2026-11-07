@@ -89,7 +89,7 @@ class Agent(ABC):
         Override to perform cleanup (e.g. saving a model).
         Default is a no-op.
         """
-        pass
+        return
 
     def run_episode(self) -> Episode:
         """Generate a complete episode under the current policy.

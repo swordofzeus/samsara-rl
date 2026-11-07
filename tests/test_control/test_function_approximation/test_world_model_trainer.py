@@ -1,13 +1,10 @@
-from samsara_rl.policy.stochastic_policy import StochasticPolicy
-from samsara_rl.search.monte_carlo_search import MonteCarloSearch
-from samsara_rl.functions.neural_networks.fully_connected import FullyConnected
-from samsara_rl.models.world_model_trainer import WorldModelAgent
 import torch
 
+from samsara_rl.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.models.world_model_trainer import WorldModelAgent
 
-def test_world_model_trainer(
-    grid_world_mdp_one_hot, grid_world_model_interpretor, grid_world_random_policy
-):
+
+def test_world_model_trainer(grid_world_mdp_one_hot, grid_world_model_interpretor, grid_world_random_policy):
 
     world_model = FullyConnected(20, 32, 18)
     wm_agent = WorldModelAgent(

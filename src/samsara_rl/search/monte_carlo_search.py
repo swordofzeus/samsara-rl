@@ -48,15 +48,9 @@ class MonteCarloSearch(Search):
             one_hot_action = F.one_hot(torch.tensor(action), num_classes=action_count)
             state_action = torch.hstack((state, one_hot_action)).float()
             prediction = self.model(state_action)
-            _, predicted_reward, terminal_logits = self.world_model_interpreter.parse(
-                prediction.unsqueeze(0)
-            )
-            predicted_next_state = self.world_model_interpreter.predicted_next_state(
-                prediction.unsqueeze(0)
-            ).squeeze()
-            predicted_is_terminal = self.world_model_interpreter.is_terminal(
-                terminal_logits, threshold=0.5
-            )
+            _, predicted_reward, terminal_logits = self.world_model_interpreter.parse(prediction.unsqueeze(0))
+            predicted_next_state = self.world_model_interpreter.predicted_next_state(prediction.unsqueeze(0)).squeeze()
+            predicted_is_terminal = self.world_model_interpreter.is_terminal(terminal_logits, threshold=0.5)
             rewards[step] = predicted_reward
             if predicted_is_terminal:
                 break
@@ -94,8 +88,6 @@ class MonteCarloSearch(Search):
         with torch.no_grad():
             for action in range(num_actions):
                 for _ in range(budget):
-                    rewards[action] = rewards[action] + self.rollout(
-                        state, action, depth, num_actions, gamma
-                    )
+                    rewards[action] = rewards[action] + self.rollout(state, action, depth, num_actions, gamma)
                 rewards[action] = rewards[action] / budget
         return rewards

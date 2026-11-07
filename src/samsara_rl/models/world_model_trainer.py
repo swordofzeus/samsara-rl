@@ -1,16 +1,18 @@
+from collections.abc import Callable
+from typing import Any
+
+import torch
+import torch.nn.functional as F
+from torch import nn
+
 from samsara_rl.agent import Agent
 from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
 from samsara_rl.policy.policy import Policy
-from samsara_rl.utils.memory.replay_buffer import ReplayBuffer
 from samsara_rl.utils.gym_utils import action_output_dim, state_output_dim
 from samsara_rl.utils.memory.episode import Episode
-import torch.nn.functional as F
-import torch
-from typing import Any
-from collections.abc import Callable
-from torch import nn
+from samsara_rl.utils.memory.replay_buffer import ReplayBuffer
 
 
 class WorldModelAgent(Agent):
@@ -35,14 +37,14 @@ class WorldModelAgent(Agent):
     def __init__(
         self,
         mdp: Any,
+        world_model: nn.Module,
+        world_model_interpreter: WorldModelInterpreter,
+        policy: Policy,
+        loss_fn: Callable,
         alpha: float = 0.001,
         gamma: float = 1,
-        loss_fn: Callable | None = None,
         batch_size: int = 128,
-        world_model: nn.Module | None = None,
-        world_model_interpreter: WorldModelInterpreter | None = None,
         optimizer: torch.optim.Optimizer | None = None,
-        policy: Policy | None = None,
         save_dir: str | None = None,
         **kwargs: Any,
     ) -> None:
@@ -61,10 +63,8 @@ class WorldModelAgent(Agent):
         )
         if optimizer:
             self.optimizer = optimizer
-        elif self.world_model is not None:
-            self.optimizer = torch.optim.Adam(self.world_model.parameters(), lr=alpha)
         else:
-            raise ValueError("Either optimizer or world_model must be provided")
+            self.optimizer = torch.optim.Adam(self.world_model.parameters(), lr=alpha)
         self.state_loss = loss_fn
         self.reward_loss = torch.nn.MSELoss()
         self.terminal_loss = torch.nn.BCEWithLogitsLoss()
@@ -79,32 +79,16 @@ class WorldModelAgent(Agent):
         Samples transitions, encodes actions as one-hot, and computes
         three losses: next-state, reward, and terminal prediction.
         """
-        assert self.world_model is not None, "world_model is required for training"
-        assert self.world_model_interpreter is not None, "world_model_interpreter is required for training"
-        assert self.state_loss is not None, "state_loss is required for training"
-
         self.optimizer.zero_grad()
-        S, A, R, S_prime, is_terminal = self.replay_buffer.sample(
-            batch_size=self.batch_size
-        )
-        encoded_actions = F.one_hot(
-            A.long(), num_classes=self.mdp.action_space.n
-        ).float()
+        S, A, R, S_prime, is_terminal = self.replay_buffer.sample(batch_size=self.batch_size)
+        encoded_actions = F.one_hot(A.long(), num_classes=self.mdp.action_space.n).float()
         state_action = torch.hstack((S, encoded_actions))
 
         model_predictions = self.world_model(state_action)
-        next_state_logits = self.world_model_interpreter.next_state_logits(
-            model_predictions
-        )
-        predicted_reward = self.world_model_interpreter.predicted_reward(
-            model_predictions
-        )
-        predicted_terminal = self.world_model_interpreter.predicted_terminal(
-            model_predictions
-        )
-        state_target = self.world_model_interpreter.prepare_state_target(
-            next_states=S_prime
-        )
+        next_state_logits = self.world_model_interpreter.next_state_logits(model_predictions)
+        predicted_reward = self.world_model_interpreter.predicted_reward(model_predictions)
+        predicted_terminal = self.world_model_interpreter.predicted_terminal(model_predictions)
+        state_target = self.world_model_interpreter.prepare_state_target(next_states=S_prime)
 
         next_state_loss = self.state_loss(
             next_state_logits,
@@ -116,14 +100,12 @@ class WorldModelAgent(Agent):
         total_loss.backward()
         self.optimizer.step()
 
-        self.metrics.update(
-            {
-                "World Model Loss": total_loss.item(),
-                "State Loss": next_state_loss.item(),
-                "Reward Loss": reward_loss.item(),
-                "Terminal Loss": terminal_loss.item(),
-            }
-        )
+        self.metrics.update({
+            "World Model Loss": total_loss.item(),
+            "State Loss": next_state_loss.item(),
+            "Reward Loss": reward_loss.item(),
+            "Terminal Loss": terminal_loss.item(),
+        })
 
     def post_episode(self, history: Episode) -> None:
         """Called after each episode completes."""
@@ -157,7 +139,6 @@ class WorldModelAgent(Agent):
         Returns:
             The selected action index.
         """
-        assert self.policy is not None, "policy is required for action selection"
         return self.policy(state)
 
     def on_complete(self) -> None:
