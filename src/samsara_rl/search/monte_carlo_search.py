@@ -38,7 +38,7 @@ class MonteCarloSearch(Search):
         Returns:
             Tensor of average estimated values, one per action.
         """
-        super().plan(state, actions, depth, budget, gamma=gamma)
+        self._validate_params(depth, budget, gamma)
         n_actions: int = int(actions.n)
         one_hot_action = F.one_hot(torch.arange(0, n_actions), num_classes=n_actions).to(
             dtype=state.dtype, device=state.device

@@ -39,6 +39,19 @@ class Search(ABC):
         self.model = model
         self.world_model_interpreter = world_model_interpreter
 
+    def _validate_params(self, depth: int, budget: int, gamma: float) -> None:
+        """Validate planning parameters.
+
+        Raises:
+            ValueError: If gamma is not in (0, 1], or depth/budget are not positive.
+        """
+        if gamma <= 0 or gamma > 1:
+            raise ValueError("Gamma must be between 0-1")
+        if depth < 1:
+            raise ValueError("Depth must be at least 1")
+        if budget < 1:
+            raise ValueError("Budget must be at least 1")
+
     @abstractmethod
     def plan(
         self,
@@ -59,10 +72,5 @@ class Search(ABC):
 
         Returns:
             Tensor of estimated values, one per action.
-
-        Raises:
-            ValueError: If gamma is not in (0, 1].
         """
-        if gamma <= 0 or gamma > 1:
-            raise ValueError("Gamma must be between 0-1")
-        return torch.zeros(0)
+        ...
