@@ -54,6 +54,9 @@ class MonteCarloSearch(Search):
         terminated_rollouts = torch.zeros((n_actions * budget,), dtype=torch.bool)
         with torch.no_grad():
             for step in range(depth):
+                if not state_action_batch[~terminated_rollouts].numel():
+                    break  # all rollouts termianted, end early
+
                 # predict next state, parse world model output
                 prediction = self.model(state_action_batch[~terminated_rollouts])
                 _, predicted_reward, terminal_logits = self.world_model_interpreter.parse(prediction)

@@ -30,7 +30,8 @@ class TDPolicyEvaluation(Agent):
         return result
 
     def select_action(self, state: Any) -> int:
-        return self.search(state)
+        action_tensor = self.search(np.array([state]))
+        return int(action_tensor.squeeze().item())
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
         transition = history.last_transition()

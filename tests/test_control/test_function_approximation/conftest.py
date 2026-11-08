@@ -73,8 +73,9 @@ def one_hot_encoding():
     """
 
     def X(S: np.ndarray) -> np.ndarray:
+        idx = int(S.item()) if isinstance(S, np.ndarray) else int(S)
         arr = np.zeros(16)
-        arr[int(S)] = 1
+        arr[idx] = 1
         return arr
 
     return X

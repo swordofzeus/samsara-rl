@@ -141,7 +141,7 @@ class WorldModelAgent(Agent):
         Returns:
             The selected action index.
         """
-        return self.policy(state)
+        return int(self.policy(state).item())
 
     def on_complete(self) -> None:
         if self.save_path and self.world_model is not None:

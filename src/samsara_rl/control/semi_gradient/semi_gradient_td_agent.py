@@ -66,4 +66,5 @@ class SemiGradientTDAgent(Agent):
         self.search.decay()
 
     def select_action(self, state: Any) -> int:
-        return self.search(state)
+        action_tensor = self.search(np.array([state]))
+        return int(action_tensor.squeeze().item())
