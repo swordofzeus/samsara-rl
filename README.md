@@ -620,7 +620,7 @@ env = ScaledCartPole(gym.make("CartPole-v1"))
 q_network = FullyConnected(4, 32, 2)
 
 # World model: 4 observations + 2 one-hot action -> 6 outputs (4 next_state + reward + terminal)
-world_model = FullyConnected(6, 32, 6)
+world_model = FullyConnected(6, 32, 6, dtype=torch.float32)
 
 # Interpreter for continuous state spaces
 class CartPoleInterpreter(WorldModelInterpreter):
@@ -692,7 +692,7 @@ from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
 env = ScaledCartPole(gym.make("CartPole-v1"))
 
 # World model: 4 observations + 2 one-hot action -> 6 outputs (4 next_state + reward + terminal)
-world_model = FullyConnected(6, 32, 6)
+world_model = FullyConnected(6, 32, 6, dtype=torch.float32)
 
 # Interpreter for continuous state spaces
 class CartPoleInterpreter(WorldModelInterpreter):
@@ -726,7 +726,7 @@ agent = WorldModelAgent(
 agent.evaluate(max_iter=500)
 
 # Load the trained model into a planning agent
-trained_model = FullyConnected(6, 32, 6)
+trained_model = FullyConnected(6, 32, 6, dtype=torch.float32)
 trained_model.load_state_dict(torch.load("world_model.pt"))
 ```
 
