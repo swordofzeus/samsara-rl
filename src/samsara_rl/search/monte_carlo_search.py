@@ -50,13 +50,10 @@ class MonteCarloSearch(Search):
         state_action_batch = state_action.repeat_interleave(budget, dim=0)
 
         # keep track of which rollouts terminated & total reward
-        rollout_cum_reward = torch.zeros((n_actions, budget))
-        terminated_rollouts = torch.zeros((n_actions * budget,), dtype=torch.bool)
+        rollout_cum_reward = torch.zeros((n_actions, budget), dtype=state.dtype, device=state.device)
+        terminated_rollouts = torch.zeros((n_actions * budget,), dtype=torch.bool, device=state.device)
         with torch.no_grad():
             for step in range(depth):
-                if not state_action_batch[~terminated_rollouts].numel():
-                    break  # all rollouts termianted, end early
-
                 # predict next state, parse world model output
                 prediction = self.model(state_action_batch[~terminated_rollouts])
                 _, predicted_reward, terminal_logits = self.world_model_interpreter.parse(prediction)
@@ -72,6 +69,9 @@ class MonteCarloSearch(Search):
                     terminated_rollouts[~terminated_rollouts] | predicted_is_terminal
                 )
                 predicted_next_state = predicted_next_state[~predicted_is_terminal]
+
+                if not state_action_batch[~terminated_rollouts].numel():
+                    break  # all rollouts termianted, end early
 
                 # sample policy, encode state + action vector for next rollout
                 action = self.policy(predicted_next_state)

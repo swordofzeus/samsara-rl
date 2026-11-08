@@ -141,7 +141,8 @@ class WorldModelAgent(Agent):
         Returns:
             The selected action index.
         """
-        return int(self.policy(state).item())
+        state_tensor = torch.as_tensor(state).unsqueeze(0)
+        return int(self.policy(state_tensor)[0].item())
 
     def on_complete(self) -> None:
         if self.save_path and self.world_model is not None:

@@ -166,8 +166,8 @@ class DeepDynaQ(DQNAgent):
 
         while not is_terminal and step_count < self.avg_episode_length:
             one_hot_state = state.clone()
-            action = self.search(state.squeeze().numpy())
-            one_hot_action = self.encode_actions(torch.tensor([action]))
+            action = self.search(state)
+            one_hot_action = self.encode_actions(action)
             state_action_input = torch.cat((one_hot_state, one_hot_action), dim=1)
 
             model_output = self.world_model(state_action_input)
@@ -177,7 +177,7 @@ class DeepDynaQ(DQNAgent):
 
             self.sim_buffer.record(
                 state.squeeze(),
-                action,
+                action.item(),
                 reward.squeeze().item(),
                 next_state.squeeze(),
                 bool(is_terminal.squeeze()),
