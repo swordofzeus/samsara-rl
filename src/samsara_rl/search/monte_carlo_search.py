@@ -40,9 +40,9 @@ class MonteCarloSearch(Search):
         """
         super().plan(state, actions, depth, budget, gamma=gamma)
         n_actions: int = int(actions.n)
-        one_hot_action = F.one_hot(
-            torch.arange(0, n_actions), num_classes=n_actions
-        ).to(dtype=state.dtype, device=state.device)
+        one_hot_action = F.one_hot(torch.arange(0, n_actions), num_classes=n_actions).to(
+            dtype=state.dtype, device=state.device
+        )
 
         # create all state x action rollout combinations for parallel evaluation
         state_action = state.unsqueeze(0).repeat(one_hot_action.shape[0], 1)
@@ -56,21 +56,14 @@ class MonteCarloSearch(Search):
             for step in range(depth):
                 # predict next state, parse world model output
                 prediction = self.model(state_action_batch[~terminated_rollouts])
-                _, predicted_reward, terminal_logits = (
-                    self.world_model_interpreter.parse(prediction)
-                )
-                predicted_next_state = (
-                    self.world_model_interpreter.predicted_next_state(prediction)
-                )
-                predicted_is_terminal = self.world_model_interpreter.is_terminal(
-                    terminal_logits, threshold=0.5
-                )
+                _, predicted_reward, terminal_logits = self.world_model_interpreter.parse(prediction)
+                predicted_next_state = self.world_model_interpreter.predicted_next_state(prediction)
+                predicted_is_terminal = self.world_model_interpreter.is_terminal(terminal_logits, threshold=0.5)
 
                 # update reward, remove terminated states from next rollout
-                rollout_cum_reward[~terminated_rollouts.view(n_actions, -1)] = (
-                    rollout_cum_reward[~terminated_rollouts.view(n_actions, -1)]
-                    + predicted_reward * (gamma**step)
-                )
+                rollout_cum_reward[~terminated_rollouts.view(n_actions, -1)] = rollout_cum_reward[
+                    ~terminated_rollouts.view(n_actions, -1)
+                ] + predicted_reward * (gamma**step)
                 predicted_is_terminal = predicted_is_terminal.bool()
                 terminated_rollouts[~terminated_rollouts] = (
                     terminated_rollouts[~terminated_rollouts] | predicted_is_terminal
@@ -79,9 +72,9 @@ class MonteCarloSearch(Search):
 
                 # sample policy, encode state + action vector for next rollout
                 action = self.policy(predicted_next_state)
-                one_hot_action = F.one_hot(
-                    torch.as_tensor(action), num_classes=n_actions
-                ).to(dtype=state.dtype, device=state.device)
+                one_hot_action = F.one_hot(torch.as_tensor(action), num_classes=n_actions).to(
+                    dtype=state.dtype, device=state.device
+                )
                 state_action = torch.hstack((predicted_next_state, one_hot_action))
                 state_action_batch[~terminated_rollouts] = state_action
 
