@@ -25,13 +25,14 @@ class WorldModelAgent(Agent):
     Args:
         mdp: Gymnasium-compatible environment.
         alpha: Learning rate for the world model optimizer.
-        gamma: Discount factor.
         loss_fn: Loss function for next-state prediction.
         batch_size: Mini-batch size for world model training.
         world_model: Neural network that predicts (next_state, reward, terminal).
         world_model_interpreter: Interpreter for parsing world model outputs.
         optimizer: Optimizer for the world model. Defaults to Adam.
         policy: Policy used to collect experience.
+        buffer_size: Maximum capacity of the replay buffer.
+        save_path: File path to save the trained world model weights.
     """
 
     def __init__(
@@ -42,16 +43,16 @@ class WorldModelAgent(Agent):
         policy: Policy,
         loss_fn: Callable,
         alpha: float = 0.001,
-        gamma: float = 1,
         batch_size: int = 128,
         optimizer: torch.optim.Optimizer | None = None,
-        save_dir: str | None = None,
+        buffer_size: int = 1000,
+        save_path: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
             mdp,
             alpha,
-            gamma,
+            gamma=1,
             **kwargs,
         )
         self.world_model = world_model
@@ -60,6 +61,7 @@ class WorldModelAgent(Agent):
             state_output_dim(self.mdp.observation_space),
             action_output_dim(self.mdp.action_space),
             dtype=mdp.observation_space.dtype,
+            memory_size=buffer_size,
         )
         if optimizer:
             self.optimizer = optimizer
@@ -71,7 +73,7 @@ class WorldModelAgent(Agent):
         self.policy = policy
         self.batch_size = batch_size
         self.metrics: dict[str, float] = {}
-        self.save_dir = save_dir
+        self.save_path = save_path
 
     def train(self) -> None:
         """Train the world model on a mini-batch from the replay buffer.
@@ -81,7 +83,7 @@ class WorldModelAgent(Agent):
         """
         self.optimizer.zero_grad()
         S, A, R, S_prime, is_terminal = self.replay_buffer.sample(batch_size=self.batch_size)
-        encoded_actions = F.one_hot(A.long(), num_classes=self.mdp.action_space.n).float()
+        encoded_actions = F.one_hot(A.long(), num_classes=self.mdp.action_space.n).to(dtype=S.dtype, device=S.device)
         state_action = torch.hstack((S, encoded_actions))
 
         model_predictions = self.world_model(state_action)
@@ -142,8 +144,8 @@ class WorldModelAgent(Agent):
         return self.policy(state)
 
     def on_complete(self) -> None:
-        if self.save_dir and self.world_model is not None:
-            torch.save(self.world_model.state_dict(), self.save_dir)
+        if self.save_path and self.world_model is not None:
+            torch.save(self.world_model.state_dict(), self.save_path)
 
     def get_metrics(self, trajectory: Episode) -> dict[str, float]:
         """Return training metrics including world model loss.

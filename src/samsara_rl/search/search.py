@@ -42,7 +42,7 @@ class Search(ABC):
     @abstractmethod
     def plan(
         self,
-        state: Any,
+        state: torch.Tensor,
         actions: gymnasium.spaces.Discrete,
         depth: int,
         budget: int,

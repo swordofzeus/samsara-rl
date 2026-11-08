@@ -22,7 +22,6 @@ from samsara_rl.functions.neural_networks.world_model_interpreter import (
     WorldModelInterpreter,
 )
 from samsara_rl.policy.policy import Policy
-from samsara_rl.utils.policy.policy_utils import sample
 
 
 class OneHotWrapper(gym.ObservationWrapper):
@@ -47,16 +46,21 @@ def grid_world_mdp_one_hot(grid_world_mdp):
 
 
 @pytest.fixture
-def grid_world_random_policy(grid_world_mdp, random_policy):
-    class GridWorldRandomPolicy(Policy):
-        def __init__(self, policy):
-            self.policy = policy
+def grid_world_stochastic_policy(random_policy):
+    class GridWorldStochasticPolicy(Policy):
+        def __init__(self, distribution):
+            self.distribution = torch.from_numpy(distribution)
 
         def __call__(self, state):
-            state_index = np.argmax(state)
-            return sample(self.policy, state_index)
+            if state.ndim > 2:
+                raise ValueError("State must have at most 2 dimensions")
+            state_tensor = torch.as_tensor(state) if isinstance(state, np.ndarray) else state
+            idx = torch.argmax(state_tensor, dim=-1)
+            action_probability = self.distribution[idx]
+            sample = torch.multinomial(action_probability, num_samples=1, replacement=True)
+            return sample.squeeze(-1)
 
-    return GridWorldRandomPolicy(random_policy)
+    return GridWorldStochasticPolicy(random_policy)
 
 
 @pytest.fixture
@@ -119,7 +123,7 @@ def grid_world_model_interpretor():
         def predicted_next_state(self, output):
             next_state = torch.argmax(output[:, 0 : self.grid_count], dim=1)
             next_state_one_hot = f.one_hot(next_state, num_classes=16)
-            return next_state_one_hot.to(torch.float64)
+            return next_state_one_hot.to(dtype=output.dtype, device=output.device)
 
         def predicted_reward(self, output):
             return output[:, self.grid_count]
