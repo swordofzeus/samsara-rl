@@ -29,6 +29,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
 | [TD Actor-Critic](#actor-critic) | Actor Critic | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
 | [Deep Dyna-Q](#deep-dyna-q) | Dyna (Model-Based + Model-Free) | Learns a world model from real transitions, then generates simulated experience to accelerate Q-network training via Dyna-style planning | Sample-efficient learning; environments where real interactions are expensive | World model errors compound during planning; sensitive to model accuracy |
+| [World Model Trainer](#world-model-trainer) | Model Learning | Collects experience via a given policy and trains a world model to predict next states, rewards, and terminal signals from (state, action) pairs | Pre-training a world model before using it in planning agents (e.g. Deep Dyna-Q, Monte Carlo Search) | Does not learn a policy itself; world model quality depends on coverage of the exploration policy |
 | [Monte Carlo Search](#monte-carlo-search) | Forward Search | Vectorized forward search that evaluates each action by averaging discounted returns from multiple stochastic rollouts through a learned world model, running all rollouts in parallel via batched tensor operations | Action selection in model-based RL; not a standalone algorithm but a planning subroutine that can be used by model-based agents | Accuracy depends on world model quality; computationally expensive with large action spaces or deep rollouts |
 | Monte Carlo Tree Search | Forward Search | *Next release* | *Next release* | *Next release* |
 
@@ -59,7 +60,8 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
     - [REINFORCE](#reinforce)
 9. [Actor-Critic](#actor-critic)
 10. [Deep Dyna-Q](#deep-dyna-q)
-11. [Monte Carlo Search](#monte-carlo-search)
+11. [World Model Trainer](#world-model-trainer)
+12. [Monte Carlo Search](#monte-carlo-search)
 
 ---
 
@@ -647,6 +649,86 @@ agent.evaluate(max_iter=2000)
 ```
 
 For a full walkthrough with Q-surface visualization, world model analysis, and hyperparameter tuning, see the [Deep Dyna-Q tutorial notebook](examples/deep_dyna_q/DeepDynaQTutorial.ipynb).
+
+---
+
+## World Model Trainer
+
+`WorldModelAgent` is a standalone agent for training a world model independently of any planning or control algorithm. It runs episodes using a provided policy, stores transitions in a replay buffer, and trains a neural network to predict (next_state, reward, terminal) given (state, action). The trained model can then be saved and loaded into planning agents like Deep Dyna-Q or Monte Carlo Search.
+
+The world model is trained on three simultaneous objectives:
+
+- **Next-state prediction** — configurable loss function (e.g. `CrossEntropyLoss` for discrete states, `MSELoss` for continuous)
+- **Reward prediction** — MSE loss on the scalar reward signal
+- **Terminal prediction** — binary cross-entropy with logits for terminal state classification
+
+Training begins automatically once the replay buffer contains at least `batch_size` transitions. On each environment step, the latest transition is recorded and a training step is performed.
+
+**`WorldModelAgent(mdp, world_model, world_model_interpreter, policy, loss_fn, ...)`**
+
+| Argument                  | Type                    | Default | Description                                                        |
+|---------------------------|-------------------------|---------|--------------------------------------------------------------------|
+| `mdp`                     | `gym.Env`               |         | Gymnasium-compatible environment                                   |
+| `world_model`             | `nn.Module`             |         | Neural network predicting (next_state, reward, terminal)           |
+| `world_model_interpreter` | `WorldModelInterpreter` |         | Parses world model output into state, reward, and terminal signals |
+| `policy`                  | `Policy`                |         | Policy used to collect experience                                  |
+| `loss_fn`                 | `Callable`              |         | Loss function for next-state prediction                            |
+| `alpha`                   | `float`                 | `0.001` | Learning rate for the world model optimizer                        |
+| `batch_size`              | `int`                   | `128`   | Mini-batch size for world model training                           |
+| `optimizer`               | `Optimizer`             | `Adam`  | Optimizer for the world model                                      |
+| `buffer_size`             | `int`                   | `1000`  | Maximum capacity of the replay buffer                              |
+| `save_path`               | `str`                   | `None`  | File path to save the trained world model weights on completion    |
+
+**Examples**
+
+```python
+import gymnasium as gym
+import torch
+from samsara_rl.models.world_model_trainer import WorldModelAgent
+from samsara_rl.functions.neural_networks.fully_connected import FullyConnected
+from samsara_rl.functions.neural_networks.world_model_interpreter import WorldModelInterpreter
+from samsara_rl.mdp.cart_pole.scaled_cart_pole import ScaledCartPole
+
+env = ScaledCartPole(gym.make("CartPole-v1"))
+
+# World model: 4 observations + 2 one-hot action -> 6 outputs (4 next_state + reward + terminal)
+world_model = FullyConnected(6, 32, 6)
+
+# Interpreter for continuous state spaces
+class CartPoleInterpreter(WorldModelInterpreter):
+    def next_state_logits(self, output):
+        return output[:, 0:4]
+    def predicted_next_state(self, output):
+        return output[:, 0:4]
+    def predicted_reward(self, output):
+        return output[:, 4]
+    def predicted_terminal(self, output):
+        return output[:, 5]
+    def parse(self, output):
+        return self.next_state_logits(output), self.predicted_reward(output), self.predicted_terminal(output)
+
+# Use a random policy for exploration
+from samsara_rl.policy.epsilon_greedy import EpsilonGreedy
+exploration_policy = EpsilonGreedy(lambda s: torch.zeros(s.shape[0], 2), epsilon=1.0, epsilon_decay=1.0)
+
+agent = WorldModelAgent(
+    mdp=env,
+    world_model=world_model,
+    world_model_interpreter=CartPoleInterpreter(),
+    policy=exploration_policy,
+    loss_fn=torch.nn.MSELoss(),
+    alpha=0.001,
+    batch_size=64,
+    buffer_size=10000,
+    save_path="world_model.pt",
+    log_dir="logs/world_model", experiment_name="cartpole_wm",
+)
+agent.evaluate(max_iter=500)
+
+# Load the trained model into a planning agent
+trained_model = FullyConnected(6, 32, 6)
+trained_model.load_state_dict(torch.load("world_model.pt"))
+```
 
 ---
 

@@ -31,7 +31,7 @@ class Search(ABC):
 
     def __init__(
         self,
-        policy: Callable[..., int],
+        policy: Callable[..., torch.Tensor],
         model: Any,
         world_model_interpreter: WorldModelInterpreter,
     ) -> None:
