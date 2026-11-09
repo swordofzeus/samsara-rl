@@ -38,5 +38,5 @@ class MonteCarloPolicyEvaluation(Agent):
         result: np.ndarray = self.q[state]
         return result
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         return

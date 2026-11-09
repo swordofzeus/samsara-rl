@@ -21,9 +21,9 @@ class SarsaGradient(SemiGradientTDAgent):
     def __init__(self, mdp: Any, **kwargs: Any) -> None:
         super().__init__(mdp, **kwargs)
 
-    def td_target(self, history: Episode, terminal: bool) -> float:
+    def td_target(self, history: Episode) -> float:
         """Compute TD target: 0 for terminal states, Q(S', A') otherwise."""
-        if terminal:
+        if history.terminated:
             return 0
         S_prime = torch.tensor(history.past_states()[-1])
         A_prime = int(history.past_actions()[-1])
@@ -42,19 +42,25 @@ class SarsaGradient(SemiGradientTDAgent):
             The episode history.
         """
         curr_state, _ = self.mdp.reset()
-        episode_history = Episode.from_gym(self.mdp, curr_state)
+        curr_episode = Episode.from_gym(self.mdp, curr_state)
         curr_action = self.select_action(curr_state)
         terminated = False
 
-        while not terminated:
-            next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
+        while not curr_episode.is_ended():
+            next_state, reward, terminated, _truncated, _ = self.mdp.step(curr_action)
             next_action = self.select_action(next_state)
-            episode_history.record(curr_action, reward, next_state, a_prime=next_action)
+            curr_episode.record(
+                curr_action,
+                reward,
+                next_state,
+                a_prime=next_action,
+                terminated=terminated,
+                truncated=_truncated,
+            )
             curr_action = next_action
             curr_state = next_state
 
-            terminated = terminated or truncated
-            self.post_visit(episode_history, terminated)
+            self.post_visit(curr_episode)
             [hook(self) for hook in self.post_visit_hooks]
 
-        return episode_history
+        return curr_episode

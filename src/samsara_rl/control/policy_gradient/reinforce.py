@@ -12,7 +12,7 @@ class Reinforce(MonteCarloPolicyGradient):
     """REINFORCE algorithm (Williams, 1992).
 
     A special case of Monte Carlo Policy Gradient where the optimizer
-    steps after every episode (batch_size=1).
+    steps after every episode (episodes_per_update=1).
 
     Args:
         mdp: Gymnasium-compatible environment.
@@ -40,7 +40,7 @@ class Reinforce(MonteCarloPolicyGradient):
             gamma,
             policy_network,
             optimizer,
-            batch_size=1,
+            episodes_per_update=1,
             use_advantage=use_advantage,
             **kwargs,
         )

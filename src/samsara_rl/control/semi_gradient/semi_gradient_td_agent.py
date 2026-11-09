@@ -43,7 +43,7 @@ class SemiGradientTDAgent(Agent):
         self.search = EpsilonGreedy(self.get_q_values, epsilon=epsilon, epsilon_decay=epsilon_decay)
 
     @abstractmethod
-    def td_target(self, history: Episode, terminal: bool) -> float:
+    def td_target(self, history: Episode) -> float:
         pass
 
     def get_q_values(self, curr_state: Any) -> np.ndarray:
@@ -53,11 +53,11 @@ class SemiGradientTDAgent(Agent):
         result: np.ndarray = self.q(curr_state).squeeze()
         return result
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         transition = history.last_transition()
         if transition is None:
             return
-        target = self.td_target(history, terminal)
+        target = self.td_target(history)
         self.credit_assignment.observe(transition, target)
 
     def post_episode(self, history: Episode) -> None:

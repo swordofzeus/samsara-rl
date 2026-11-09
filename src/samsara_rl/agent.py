@@ -47,7 +47,7 @@ class Agent(ABC):
         self.observation_space = state_output_dim(self.mdp.observation_space)
 
     @abstractmethod
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         """Called after each step within an episode.
 
         Subclasses use this to perform per-step updates (e.g. TD
@@ -56,7 +56,6 @@ class Agent(ABC):
 
         Args:
             history: The episode history recorded so far.
-            terminal: Whether the episode has terminated.
         """
         pass
 
@@ -102,20 +101,24 @@ class Agent(ABC):
             The episode history.
         """
         curr_state, _ = self.mdp.reset()
-        episode_history = Episode.from_gym(self.mdp, curr_state)
-        terminated = False
+        curr_episode = Episode.from_gym(self.mdp, curr_state)
 
-        while not terminated:
+        while not curr_episode.is_ended():
             curr_action = self.select_action(curr_state)
             next_state, reward, terminated, truncated, _ = self.mdp.step(curr_action)
-            episode_history.record(curr_action, reward, next_state)
+            curr_episode.record(
+                curr_action,
+                reward,
+                next_state,
+                terminated=terminated,
+                truncated=truncated,
+            )
             curr_state = next_state
 
-            terminated = terminated or truncated
-            self.post_visit(episode_history, terminated)
+            self.post_visit(curr_episode)
             [hook(self) for hook in self.post_visit_hooks]
 
-        return episode_history
+        return curr_episode
 
     def evaluate(self, max_iter: int = 1000) -> None:
         """Run prediction for a fixed number of episodes.

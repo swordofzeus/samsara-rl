@@ -17,7 +17,7 @@ def test_monte_carlo_policy_gradient_convergence(grid_world_mdp_one_hot, fully_c
         gamma=0.9,
         alpha=0.004,
         policy_network=fully_connected_one_hot_network,
-        batch_size=32,
+        episodes_per_update=32,
     )
     monte_carlo_agent.evaluate(max_iter=6000)
     obs = grid_world_mdp_one_hot.observation

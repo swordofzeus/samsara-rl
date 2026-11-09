@@ -44,6 +44,8 @@ class Episode(Memory):
         dtype = getattr(initial_state, "dtype", None)
         super().__init__(observation_space, action_space, dtype=dtype)
         self.states[0] = initial_state
+        self.terminated = False
+        self.truncated = False
 
     @classmethod
     def from_gym(cls, env: Any, s: Any) -> Episode:
@@ -60,13 +62,20 @@ class Episode(Memory):
         history.curr_index = len(states) - 1
         return history
 
+    def is_ended(self) -> bool:
+        return self.truncated or self.terminated
+
     def record(
         self,
         action: Any,
         reward: float,
         s_prime: Any,
         a_prime: Any = None,
+        terminated: bool = False,
+        truncated: bool = False,
     ) -> None:
+        self.terminated = terminated
+        self.truncated = truncated
         self.actions[self.curr_index] = action
         self.rewards[self.curr_index] = reward
         self.states[self.curr_index + 1] = s_prime

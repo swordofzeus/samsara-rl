@@ -26,7 +26,7 @@ Applications of RL include robotic manipulation, LLM fine-tuning, financial port
 | [DQN](#deep-q-network) | Value Approximation | Neural network Q-function with replay buffer and target network | High-dimensional continuous state spaces | Maximization bias; training instability |
 | [Double DQN](#deep-q-network) | Value Approximation | DQN with decoupled action selection and evaluation to reduce overestimation | Same as DQN with more stable Q estimates | Still sensitive to hyperparameters |
 | [Monte Carlo Policy Gradient](#monte-carlo-policy-gradient) | Policy Gradient | Accumulates policy gradients over a batch of episodes using discounted returns, then updates the policy network | Episodic tasks; continuous or large state spaces | High variance; must wait until episode end; sensitive to baseline choice |
-| [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with batch_size=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
+| [REINFORCE](#reinforce) | Policy Gradient | Special case of MC Policy Gradient with episodes_per_update=1; updates after every episode | Simple episodic tasks; learning/prototyping | Highest variance; no gradient averaging across episodes |
 | [TD Actor-Critic](#actor-critic) | Actor Critic | Separate actor (policy) and critic (value) networks; critic provides TD-based advantage signal to guide policy updates | Continuous state spaces; lower variance than REINFORCE | Sensitive to learning rate ratio between actor and critic; value function can have stale estimates for unvisited states |
 | [Deep Dyna-Q](#deep-dyna-q) | Dyna (Model-Based + Model-Free) | Learns a world model from real transitions, then generates simulated experience to accelerate Q-network training via Dyna-style planning | Sample-efficient learning; environments where real interactions are expensive | World model errors compound during planning; sensitive to model accuracy |
 | [World Model Trainer](#world-model-trainer) | Model Learning | Collects experience via a given policy and trains a world model to predict next states, rewards, and terminal signals from (state, action) pairs | Pre-training a world model before using it in planning agents (e.g. Deep Dyna-Q, Monte Carlo Search) | Does not learn a policy itself; world model quality depends on coverage of the exploration policy |
@@ -456,25 +456,25 @@ Policy gradient methods learn a parameterized policy directly, rather than deriv
 
 Accumulates policy gradients over a batch of episodes before performing an optimizer step. For each episode, discounted returns are computed for every time step, and the policy gradient loss weights the log-probability of each taken action by its return. An optional running average baseline reduces variance by centering returns around their expected value.
 
-**`MonteCarloPolicyGradient(mdp, alpha, gamma, policy_network, optimizer, batch_size, use_advantage)`**
+**`MonteCarloPolicyGradient(mdp, alpha, gamma, policy_network, optimizer, episodes_per_update, use_advantage)`**
 
-| Argument         | Type             | Default | Description                                                     |
-|------------------|------------------|---------|-----------------------------------------------------------------|
-| `mdp`            | `gym.Env`        |         | Gymnasium-compatible environment                                |
-| `alpha`          | `float`          |         | Learning rate                                                   |
-| `gamma`          | `float`          |         | Discount factor                                                 |
-| `policy_network` | `nn.Module`      |         | Neural network that maps states to action logits                |
-| `optimizer`      | `Optimizer`      | `Adam`  | Optimizer for the policy network                                |
-| `batch_size`     | `int`            | `1`     | Number of episodes to accumulate gradients over before stepping |
-| `use_advantage`  | `bool`           | `True`  | Subtract a running average baseline to reduce variance          |
+| Argument              | Type             | Default | Description                                                     |
+|-----------------------|------------------|---------|-----------------------------------------------------------------|
+| `mdp`                 | `gym.Env`        |         | Gymnasium-compatible environment                                |
+| `alpha`               | `float`          |         | Learning rate                                                   |
+| `gamma`               | `float`          |         | Discount factor                                                 |
+| `policy_network`      | `nn.Module`      |         | Neural network that maps states to action logits                |
+| `optimizer`           | `Optimizer`      | `Adam`  | Optimizer for the policy network                                |
+| `episodes_per_update` | `int`            | `1`     | Number of episodes to accumulate gradients over before stepping |
+| `use_advantage`       | `bool`           | `True`  | Subtract a running average baseline to reduce variance          |
 
 ### REINFORCE
 
-REINFORCE (Williams, 1992) is a special case of Monte Carlo Policy Gradient where the optimizer steps after every episode (batch_size=1).
+REINFORCE (Williams, 1992) is a special case of Monte Carlo Policy Gradient where the optimizer steps after every episode (episodes_per_update=1).
 
 **`Reinforce(mdp, alpha, gamma, policy_network, optimizer, use_advantage)`**
 
-Accepts the same arguments as `MonteCarloPolicyGradient`, without `batch_size`.
+Accepts the same arguments as `MonteCarloPolicyGradient`, without `episodes_per_update`.
 
 **Examples**
 
@@ -490,7 +490,7 @@ network = FullyConnected(4, 32, 2)
 
 # Monte Carlo Policy Gradient with batch of 32 episodes
 agent = MonteCarloPolicyGradient(
-    mdp=env, gamma=0.99, alpha=0.002, policy_network=network, batch_size=32,
+    mdp=env, gamma=0.99, alpha=0.002, policy_network=network, episodes_per_update=32,
     log_dir="logs/mc_pg", experiment_name="cartpole_mcpg",
 )
 agent.evaluate(max_iter=3000)
@@ -532,18 +532,18 @@ Positive advantage reinforces the action (makes it more likely), negative advant
 
 V(S') must be **detached** from the computation graph when computing the TD target. Otherwise gradients flow through both V(S) and V(S'), causing the critic to push V(S) toward the target AND push V(S') away from it simultaneously. The advantage must also be detached before computing the policy loss — it is a fixed signal for the actor, not something to differentiate through.
 
-**`ValueFunctionActorCritic(mdp, alpha, gamma, policy_network, value_network, policy_optimizer, value_optimizer, batch_size)`**
+**`ValueFunctionActorCritic(mdp, alpha, gamma, policy_network, value_network, policy_optimizer, value_optimizer, episodes_per_update)`**
 
-| Argument           | Type        | Default | Description                                                     |
-|--------------------|-------------|---------|-----------------------------------------------------------------|
-| `mdp`              | `gym.Env`   |         | Gymnasium-compatible environment                                |
-| `alpha`            | `float`     | `0.01`  | Learning rate (used as default if no optimizer provided)        |
-| `gamma`            | `float`     | `0.9`   | Discount factor                                                 |
-| `policy_network`   | `nn.Module` |         | Neural network that maps states to action logits                |
-| `value_network`    | `nn.Module` |         | Neural network that maps states to a single value estimate      |
-| `policy_optimizer` | `Optimizer` | `Adam`  | Optimizer for the policy network                                |
-| `value_optimizer`  | `Optimizer` | `Adam`  | Optimizer for the value network                                 |
-| `batch_size`       | `int`       | `32`    | Number of episodes to accumulate gradients over before stepping |
+| Argument              | Type        | Default | Description                                                     |
+|-----------------------|-------------|---------|-----------------------------------------------------------------|
+| `mdp`                 | `gym.Env`   |         | Gymnasium-compatible environment                                |
+| `alpha`               | `float`     | `0.01`  | Learning rate (used as default if no optimizer provided)        |
+| `gamma`               | `float`     | `0.9`   | Discount factor                                                 |
+| `policy_network`      | `nn.Module` |         | Neural network that maps states to action logits                |
+| `value_network`       | `nn.Module` |         | Neural network that maps states to a single value estimate      |
+| `policy_optimizer`    | `Optimizer` | `Adam`  | Optimizer for the policy network                                |
+| `value_optimizer`     | `Optimizer` | `Adam`  | Optimizer for the value network                                 |
+| `episodes_per_update` | `int`       | `32`    | Number of episodes to accumulate gradients over before stepping |
 
 The critic learning rate should be faster than the actor (1.5–3x) so the critic can provide accurate advantage estimates before the policy shifts too far.
 
@@ -561,7 +561,7 @@ value_network = FullyConnected(4, 32, 1)
 policy_network = FullyConnected(4, 32, 2)
 
 agent = ValueFunctionActorCritic(
-    mdp=env, gamma=0.9, alpha=0.025, batch_size=32,
+    mdp=env, gamma=0.9, alpha=0.025, episodes_per_update=32,
     value_network=value_network, policy_network=policy_network,
     value_optimizer=torch.optim.Adam(value_network.parameters(), lr=0.025 * 1.75),
     policy_optimizer=torch.optim.Adam(policy_network.parameters(), lr=0.025),

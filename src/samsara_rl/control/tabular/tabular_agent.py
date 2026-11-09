@@ -46,7 +46,7 @@ class TabularAgent(Agent):
         self.search.decay()
         self.credit_assignment.terminal(history)
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         """Compute the TD target and update Q via credit assignment."""
         transition = history.last_transition()
         if transition is None:
