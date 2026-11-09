@@ -185,7 +185,7 @@ class DeepDynaQ(DQNAgent):
             step_count += 1
             state = next_state
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         """Perform DQN update, then train world model and run planning.
 
         After the standard DQN post_visit update, trains the world model
@@ -193,7 +193,7 @@ class DeepDynaQ(DQNAgent):
         simulated episodes through the world model and uses them to
         further update the Q-network.
         """
-        super().post_visit(history, terminal)
+        super().post_visit(history)
         if self.model_plan_steps == 0 or self.replay_buffer.curr_index < self.batch_size:
             return
 

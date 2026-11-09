@@ -19,7 +19,7 @@ def test_value_function_actor_critic_convergence(grid_world_mdp_one_hot):
         grid_world_mdp_one_hot,
         gamma=0.9,
         alpha=0.004,
-        batch_size=32,
+        episodes_per_update=32,
         value_network=value_network,
         policy_network=policy_network,
     )

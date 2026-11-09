@@ -36,7 +36,7 @@ def test_post_visit_single_step(grid_world_mdp, random_policy):
     """post_visit with a single-step trajectory should be a no-op."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy)
     history = Episode(1, 1, 10)
-    td.post_visit(history, False)
+    td.post_visit(history)
     assert all(np.all(td.get_q_values(s) == 0) for s in range(16)), (
         "Q-table should be unchanged after a single-step trajectory"
     )
@@ -45,17 +45,17 @@ def test_post_visit_single_step(grid_world_mdp, random_policy):
 def test_post_visit_updates_q(grid_world_mdp, random_policy, two_step_history):
     """post_visit with a two-step trajectory should update the Q-table."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy)
-    td.post_visit(two_step_history, False)
+    td.post_visit(two_step_history)
     assert td.get_q_values(10)[1] != 0, "Q(10, 1) should be updated after post_visit"
 
 
 def test_post_visit_eligibility_decay(grid_world_mdp, random_policy, two_step_history, three_step_history):
     """Eligibility traces should decay by lambda and set visited (S, A) to 1."""
     td = TDPolicyEvaluation(grid_world_mdp, random_policy, _lambda=0.4)
-    td.post_visit(two_step_history, False)
+    td.post_visit(two_step_history)
     assert td.credit_assignment.eligibility[10, 1] == 1.0, "Visited (S, A) eligibility should be 1"
 
-    td.post_visit(three_step_history, False)
+    td.post_visit(three_step_history)
     assert td.credit_assignment.eligibility[14, 2] == 1.0, "Most recent (S, A) eligibility should be 1"
     assert np.isclose(td.credit_assignment.eligibility[10, 1], 0.4), (
         "Previous (S, A) eligibility should decay by lambda"

@@ -23,7 +23,7 @@ class MonteCarloPolicyGradient(Agent):
         gamma: Discount factor.
         policy_network: Neural network that maps states to action logits.
         optimizer: Optimizer for the policy network. Defaults to Adam.
-        batch_size: Number of episodes to accumulate gradients over
+        episodes_per_update: Number of episodes to accumulate gradients over
             before performing an optimizer step.
         use_advantage: If True, subtract a running average baseline
             from discounted returns to reduce variance.
@@ -36,7 +36,7 @@ class MonteCarloPolicyGradient(Agent):
         gamma: float,
         policy_network: nn.Module,
         optimizer: torch.optim.Optimizer | None = None,
-        batch_size: int = 1,
+        episodes_per_update: int = 1,
         use_advantage: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -44,13 +44,13 @@ class MonteCarloPolicyGradient(Agent):
 
         self.policy_network = policy_network
         self.optimizer = optimizer or torch.optim.Adam(self.policy_network.parameters(), lr=self.alpha)
-        self.batch_size = batch_size
+        self.episodes_per_update = episodes_per_update
         self.running_average = 0
         self.episode_count = 0
         self.use_advantage = use_advantage
         self.metrics: dict[str, float] = {}
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         pass
 
     def advantage(self, rewards: np.ndarray) -> np.ndarray:
@@ -100,7 +100,7 @@ class MonteCarloPolicyGradient(Agent):
         selected_actions = torch.from_numpy(actions).to(torch.long).unsqueeze(1)
         selected_action_values = torch.gather(action_score, dim=1, index=selected_actions).squeeze(1)
 
-        loss = (-1 / self.batch_size) * (discounted_rewards_tensor * selected_action_values).sum()
+        loss = (-1 / self.episodes_per_update) * (discounted_rewards_tensor * selected_action_values).sum()
         loss.backward()
         return loss.item()
 
@@ -131,6 +131,6 @@ class MonteCarloPolicyGradient(Agent):
         """
         loss = self.train(history)
         self.metrics["loss"] = loss
-        if self.episode_count % self.batch_size == 0:
+        if self.episode_count % self.episodes_per_update == 0:
             self.optimizer.step()
             self.optimizer.zero_grad()

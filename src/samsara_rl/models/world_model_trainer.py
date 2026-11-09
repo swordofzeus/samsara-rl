@@ -113,7 +113,7 @@ class WorldModelAgent(Agent):
         """Called after each episode completes."""
         pass
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         """Record the latest transition and train if buffer is large enough.
 
         Args:
@@ -127,7 +127,7 @@ class WorldModelAgent(Agent):
             history.past_actions()[-2],
             history.past_rewards()[-2],
             history.past_states()[-1],
-            terminal,
+            history.terminated,
         )
         if self.replay_buffer.curr_index >= self.batch_size:
             self.train()

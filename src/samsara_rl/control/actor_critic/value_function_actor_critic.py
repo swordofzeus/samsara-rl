@@ -20,7 +20,7 @@ class ValueFunctionActorCritic(Agent):
         log_dir: str | None = None,
         post_episode_hooks: list[Any] | None = None,
         post_visit_hooks: list[Any] | None = None,
-        batch_size: int = 32,
+        episodes_per_update: int = 32,
         policy_network: Any = None,
         policy_optimizer: Any = None,
         value_network: Any = None,
@@ -47,7 +47,7 @@ class ValueFunctionActorCritic(Agent):
             else policy_optimizer
         )
         self.curr_episode = 0
-        self.batch_size = batch_size
+        self.episodes_per_update = episodes_per_update
         self.update_policy = True
 
     def post_episode(self, history: Episode) -> None:
@@ -56,7 +56,9 @@ class ValueFunctionActorCritic(Agent):
             return
         V_S = self.value_network(transitions.state).squeeze(-1)
         V_S_prime = self.value_network(transitions.next_state).squeeze(-1).detach()
-        V_S_prime[-1] = 0  # value of terminal transition is 0 by definition
+
+        # if env terminated episode, terminal value is 0 otherwise bootstrap
+        V_S_prime[-1] = V_S_prime[-1] * (not history.terminated)
         R = transitions.reward.to(V_S.dtype)
         td_target = R + self.gamma * V_S_prime
         loss = self.loss(V_S, td_target)
@@ -68,10 +70,10 @@ class ValueFunctionActorCritic(Agent):
             logits = self.policy_network(transitions.state)
             action_values = Categorical(logits=logits).log_prob(transitions.action)
 
-            policy_loss = -(action_values * advantage_estimate).sum() / self.batch_size
+            policy_loss = -(action_values * advantage_estimate).sum() / self.episodes_per_update
             policy_loss.backward()
 
-        if self.curr_episode % self.batch_size == 0:
+        if self.curr_episode % self.episodes_per_update == 0:
             self.value_optimizer.step()
             self.value_network.zero_grad()
 
@@ -80,7 +82,7 @@ class ValueFunctionActorCritic(Agent):
                 self.policy_network.zero_grad()
         return
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         return
 
     def get_metrics(self, trajectory: Episode) -> dict[str, float]:

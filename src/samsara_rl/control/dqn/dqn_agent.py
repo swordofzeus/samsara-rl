@@ -68,7 +68,10 @@ class DQNAgent(Agent):
         )
         self.q: nn.Module = q  # type: ignore[assignment]
         self.replay_buffer = ReplayBuffer(
-            self.observation_space, self.action_space, buffer_size, dtype=mdp.observation_space.dtype
+            self.observation_space,
+            self.action_space,
+            buffer_size,
+            dtype=mdp.observation_space.dtype,
         )
         self.target_network = copy.deepcopy(self.q)
         self.optimizer = torch.optim.Adam(self.q.parameters(), lr=self.alpha)
@@ -92,7 +95,7 @@ class DQNAgent(Agent):
         )
         self.metrics: dict[str, float] = {"epsilon": self.search.epsilon}
 
-    def _build_up_replay_buffer(self, episode: Episode, terminal: bool) -> None:
+    def _build_up_replay_buffer(self, episode: Episode) -> None:
         """Record the latest transition into the replay buffer.
 
         Args:
@@ -104,7 +107,7 @@ class DQNAgent(Agent):
             episode.past_actions()[-2],
             episode.past_rewards()[-2],
             episode.past_states()[-1],
-            terminal,
+            episode.terminated,
         )
 
     def train(self, replay_buffer: ReplayBuffer | None = None) -> None:
@@ -127,7 +130,7 @@ class DQNAgent(Agent):
         episode_loss.backward()
         self.optimizer.step()
 
-    def post_visit(self, history: Episode, terminal: bool) -> None:
+    def post_visit(self, history: Episode) -> None:
         """Called after each step within an episode.
 
         Records the transition, trains on a mini-batch if the replay
@@ -141,7 +144,7 @@ class DQNAgent(Agent):
         if history.curr_index < 1:
             return
 
-        self._build_up_replay_buffer(history, terminal)
+        self._build_up_replay_buffer(history)
 
         if self.replay_buffer.curr_index >= MIN_BUFFER_SIZE:
             self.target_counter += 1
