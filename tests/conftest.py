@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 import pytest
+import torch
 
 from samsara_rl.mdp.grid_world.grid_world_gym import GridWorldMDP
 from samsara_rl.utils.policy.policy_utils import init_uniform_random
@@ -11,6 +12,7 @@ from samsara_rl.utils.policy.policy_utils import init_uniform_random
 def seed_everything():
     np.random.seed(42)
     random.seed(42)
+    torch.manual_seed(42)
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ class QLearningGradient(SemiGradientTDAgent):
 
     def td_target(self, history: Episode, terminal: bool) -> float:
         """Compute TD target: 0 for terminal states, max_a Q(s', a) otherwise."""
-        last_transition = history.last_transition()  # transitions(start=-1)
+        last_transition = history.last_transition()
         if last_transition is None:
             return 0
         s_prime = torch.tensor(last_transition.next_state)

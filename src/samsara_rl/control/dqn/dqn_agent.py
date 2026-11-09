@@ -168,7 +168,8 @@ class DQNAgent(Agent):
         return {**super().get_metrics(trajectory), **self.metrics}
 
     def select_action(self, state: Any) -> int:
-        return self.search.step(state)
+        state_tensor = torch.as_tensor(state).unsqueeze(0)
+        return int(self.search(state_tensor)[0].item())
 
     def get_q_values(self, state: Any) -> np.ndarray:
         """Return Q values for all actions at the given state.
@@ -181,4 +182,4 @@ class DQNAgent(Agent):
         """
         with torch.no_grad():
             state_tensor = torch.as_tensor(state)
-            return np.array(self.q(state_tensor).squeeze().numpy(), dtype=np.float64)
+            return np.array(self.q(state_tensor).numpy(), dtype=np.float64)

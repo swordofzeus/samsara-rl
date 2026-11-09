@@ -56,7 +56,8 @@ class TabularAgent(Agent):
 
     def select_action(self, state: Any) -> int:
         """Select an action using epsilon-greedy exploration."""
-        return self.search.step(state)
+        action_tensor = self.search(np.array([state]))
+        return int(action_tensor.squeeze().item())
 
     @abstractmethod
     def td_target(self, history: Episode) -> float:

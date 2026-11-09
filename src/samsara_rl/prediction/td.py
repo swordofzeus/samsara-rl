@@ -26,11 +26,12 @@ class TDPolicyEvaluation(Agent):
 
     def td_target(self, history: Episode) -> float:
         state = history.past_states()[-1].astype(int)
-        result: float = self.q[state].dot(self.search.policy[state])
+        result: float = self.q[state].dot(self.search.action_distribution(state))
         return result
 
     def select_action(self, state: Any) -> int:
-        return self.search.step(state)
+        action_tensor = self.search(np.array([state]))
+        return int(action_tensor.squeeze().item())
 
     def post_visit(self, history: Episode, terminal: bool) -> None:
         transition = history.last_transition()

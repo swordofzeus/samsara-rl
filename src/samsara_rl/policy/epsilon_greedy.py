@@ -1,4 +1,3 @@
-import random
 from collections.abc import Callable
 from enum import Enum
 
@@ -44,8 +43,18 @@ class EpsilonGreedy(Policy):
             case _:
                 raise ValueError(f"Unsupported decay schedule: {method}")
 
-    def step(self, state: np.ndarray | torch.Tensor) -> int:
-        action_values = self.q_values(state)
-        exploit = random.uniform(0, 1) > self.epsilon
-        sampled_action = action_values.argmax() if exploit else random.randint(0, action_values.shape[0] - 1)
-        return int(sampled_action)
+    def __call__(self, state: np.ndarray | torch.Tensor) -> torch.Tensor:
+        q_output = self.q_values(state)
+        state_action_values = torch.from_numpy(q_output) if isinstance(q_output, np.ndarray) else q_output
+        batch_size = state.shape[0]
+        action_count = state_action_values.shape[-1]
+
+        random_action_values = torch.randint(action_count, (batch_size,), device=state_action_values.device)
+        uniform_random = torch.rand(batch_size, device=state_action_values.device)
+
+        selected_actions = torch.where(
+            uniform_random < self.epsilon,
+            random_action_values,
+            state_action_values.argmax(dim=-1),
+        )
+        return selected_actions
