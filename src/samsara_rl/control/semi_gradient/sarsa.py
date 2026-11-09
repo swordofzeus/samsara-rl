@@ -42,18 +42,25 @@ class SarsaGradient(SemiGradientTDAgent):
             The episode history.
         """
         curr_state, _ = self.mdp.reset()
-        episode_history = Episode.from_gym(self.mdp, curr_state)
+        curr_episode = Episode.from_gym(self.mdp, curr_state)
         curr_action = self.select_action(curr_state)
         terminated = False
 
-        while not terminated:
+        while not curr_episode.is_ended():
             next_state, reward, terminated, _truncated, _ = self.mdp.step(curr_action)
             next_action = self.select_action(next_state)
-            episode_history.record(curr_action, reward, next_state, a_prime=next_action)
+            curr_episode.record(
+                curr_action,
+                reward,
+                next_state,
+                a_prime=next_action,
+                terminated=terminated,
+                truncated=_truncated,
+            )
             curr_action = next_action
             curr_state = next_state
 
-            self.post_visit(episode_history)
+            self.post_visit(curr_episode)
             [hook(self) for hook in self.post_visit_hooks]
 
-        return episode_history
+        return curr_episode
